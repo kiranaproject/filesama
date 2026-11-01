@@ -65,7 +65,7 @@ Container {
   }
 
   // ── Places Sidebar (Full height beneath menuBar, borderless like TFtFileDialog) ──
-  Panel {
+  Container {
     id: sidebar;
     anchors.top: menuBar.bottom;
     anchors.left: parent.left;
@@ -120,7 +120,7 @@ Container {
   }
 
   // ── Right Content Area ──
-  Panel {
+  Container {
     id: contentArea;
     anchors.top: menuBar.bottom;
     anchors.left: sidebar.right;
@@ -129,7 +129,7 @@ Container {
     padding: 8;
 
     // ── Navigation Toolbar ──
-    Panel {
+    Container {
       id: toolBar;
       anchors.top: parent.top;
       anchors.left: parent.left;
@@ -260,7 +260,7 @@ Container {
   }
 
   // ── Status Bar ──
-  Panel {
+  Container {
     id: statusBar;
     anchors.left: parent.left;
     anchors.right: parent.right;
