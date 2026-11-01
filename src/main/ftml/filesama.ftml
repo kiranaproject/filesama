@@ -76,23 +76,23 @@ Container {
       id: btnBack;
       x: 8; y: 5;
       width: 32; height: 32;
-      text: "‹";
-      tooltip: "Back";
+      icon: "nav-back";
+      tooltip: "Back (Alt+Left)";
     }
 
     Button {
       id: btnForward;
       x: 44; y: 5;
       width: 32; height: 32;
-      text: "›";
-      tooltip: "Forward";
+      icon: "nav-forward";
+      tooltip: "Forward (Alt+Right)";
     }
 
     Button {
       id: btnUp;
       x: 80; y: 5;
       width: 32; height: 32;
-      text: "↑";
+      icon: "nav-up";
       tooltip: "Parent Directory (Alt+Up)";
     }
 
@@ -100,7 +100,7 @@ Container {
       id: btnHome;
       x: 116; y: 5;
       width: 32; height: 32;
-      text: "⌂";
+      icon: "outline-home";
       tooltip: "Home (Alt+Home)";
     }
 
@@ -108,13 +108,21 @@ Container {
       id: btnRefresh;
       x: 152; y: 5;
       width: 32; height: 32;
-      text: "↻";
+      icon: "refresh";
       tooltip: "Refresh (F5)";
+    }
+
+    Button {
+      id: btnNewFolder;
+      x: 188; y: 5;
+      width: 32; height: 32;
+      icon: "new-folder";
+      tooltip: "New Folder (Ctrl+Shift+N)";
     }
 
     PathBar {
       id: pathBar;
-      anchors.left: btnRefresh.right;
+      anchors.left: btnNewFolder.right;
       anchors.right: searchEntry.left;
       anchors.leftMargin: 10;
       anchors.rightMargin: 10;

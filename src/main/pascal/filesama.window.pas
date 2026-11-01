@@ -9,7 +9,7 @@ interface
 
 uses
   Classes, SysUtils,
-  ftpas, ftpas.types, ftpas.api, ftpas.app, ftpas.widget, ftpas.controls,
+  ftpas, ftpas.types, ftpas.api, ftpas.app, ftpas.canvas, ftpas.widget, ftpas.controls,
   ftpas.layouts, ftpas.menus, ftpas.views, ftpas.dialogs, ftpas.ftml,
   FileSama.Model, FileSama.Ops;
 
@@ -34,9 +34,28 @@ type
     FBtnUp         : TFtButton;
     FBtnHome       : TFtButton;
     FBtnRefresh    : TFtButton;
+    FBtnNewFolder  : TFtButton;
     FContextMenu   : TFtPopupMenu;
 
+    { File dialog icon bitmaps }
+    FIconFolder    : TFtBitmap;
+    FIconFile      : TFtBitmap;
+    FIconImage     : TFtBitmap;
+    FIconCode      : TFtBitmap;
+    FIconArchive   : TFtBitmap;
+    FIconHome      : TFtBitmap;
+    FIconDesktop   : TFtBitmap;
+    FIconDocuments : TFtBitmap;
+    FIconDownloads : TFtBitmap;
+    FIconPictures  : TFtBitmap;
+    FIconMusic     : TFtBitmap;
+    FIconDrive     : TFtBitmap;
+
     function  GetCurrentPath(): string;
+    procedure InitIcons();
+    procedure FreeIcons();
+    procedure SetupPlacesIcons();
+    function  GetFileIcon(AIsDirectory: Boolean; const AFileName: string): TFtBitmap;
     procedure SetupUI();
     procedure HookMenu(const AId: string; AHandler: TFtMenuClickEvent);
     procedure UpdateNavigationState();
@@ -81,6 +100,7 @@ type
     procedure ActionUp(Sender: TFtButton);
     procedure ActionHome(Sender: TFtButton);
     procedure ActionRefresh(Sender: TFtButton);
+    procedure ActionNewFolder(Sender: TFtButton);
     procedure HandleSearchChange(Sender: TFtWidget; const AText: string);
 
     property Model: TDirectoryModel read FModel;
@@ -115,6 +135,7 @@ begin
   FFilterQuery := '';
   FNavigating := False;
 
+  InitIcons();
   SetupUI();
 
   if AInitialPath <> '' then
@@ -127,9 +148,91 @@ end;
 
 destructor TFileSamaWindow.Destroy();
 begin
+  FreeIcons();
   FHistory.Free();
   FModel.Free();
   inherited Destroy();
+end;
+
+procedure TFileSamaWindow.InitIcons();
+var
+  isDark: Boolean;
+begin
+  isDark := FtApp().DarkMode;
+  FIconFolder    := FtApp().GetIconBitmap('folder', 16, 16, isDark);
+  FIconFile      := FtApp().GetIconBitmap('file', 16, 16, isDark);
+  FIconImage     := FtApp().GetIconBitmap('file-image', 16, 16, isDark);
+  FIconCode      := FtApp().GetIconBitmap('file-code', 16, 16, isDark);
+  FIconArchive   := FtApp().GetIconBitmap('file-archive', 16, 16, isDark);
+  FIconHome      := FtApp().GetIconBitmap('outline-home', 16, 16, isDark);
+  FIconDesktop   := FtApp().GetIconBitmap('outline-desktop', 16, 16, isDark);
+  FIconDocuments := FtApp().GetIconBitmap('outline-documents', 16, 16, isDark);
+  FIconDownloads := FtApp().GetIconBitmap('outline-downloads', 16, 16, isDark);
+  FIconPictures  := FtApp().GetIconBitmap('outline-pictures', 16, 16, isDark);
+  FIconMusic     := FtApp().GetIconBitmap('outline-music', 16, 16, isDark);
+  FIconDrive     := FtApp().GetIconBitmap('outline-drive', 16, 16, isDark);
+end;
+
+procedure TFileSamaWindow.FreeIcons();
+begin
+  FreeAndNil(FIconFolder);
+  FreeAndNil(FIconFile);
+  FreeAndNil(FIconImage);
+  FreeAndNil(FIconCode);
+  FreeAndNil(FIconArchive);
+  FreeAndNil(FIconHome);
+  FreeAndNil(FIconDesktop);
+  FreeAndNil(FIconDocuments);
+  FreeAndNil(FIconDownloads);
+  FreeAndNil(FIconPictures);
+  FreeAndNil(FIconMusic);
+  FreeAndNil(FIconDrive);
+end;
+
+function TFileSamaWindow.GetFileIcon(AIsDirectory: Boolean; const AFileName: string): TFtBitmap;
+var
+  ext: string;
+begin
+  if AIsDirectory then
+    Exit(FIconFolder);
+
+  ext := LowerCase(ExtractFileExt(AFileName));
+  if (ext <> '') and (ext[1] = '.') then
+    Delete(ext, 1, 1);
+  if (ext = 'png') or (ext = 'jpg') or (ext = 'jpeg') or (ext = 'bmp') or
+     (ext = 'svg') or (ext = 'gif') or (ext = 'webp') or (ext = 'ico') then
+    Result := FIconImage
+  else if (ext = 'pas') or (ext = 'pp') or (ext = 'c') or (ext = 'h') or
+          (ext = 'cpp') or (ext = 'py') or (ext = 'sh') or (ext = 'bash') or
+          (ext = 'json') or (ext = 'xml') or (ext = 'html') or (ext = 'css') or
+          (ext = 'md') or (ext = 'js') or (ext = 'ts') or (ext = 'sql') then
+    Result := FIconCode
+  else if (ext = 'zip') or (ext = 'tar') or (ext = 'gz') or (ext = 'xz') or
+          (ext = '7z') or (ext = 'bz2') or (ext = 'rar') then
+    Result := FIconArchive
+  else
+    Result := FIconFile;
+end;
+
+procedure TFileSamaWindow.SetupPlacesIcons();
+var
+  i: Integer;
+  node: TFtTreeNode;
+begin
+  if (FPlacesTree = nil) or (FPlacesTree.Root = nil) then Exit;
+  for i := 0 to FPlacesTree.Root.ChildCount - 1 do
+  begin
+    node := FPlacesTree.Root.Children[i];
+    if node = nil then Continue;
+    if node.Text = 'Home' then node.SetIcon(FIconHome)
+    else if node.Text = 'Desktop' then node.SetIcon(FIconDesktop)
+    else if node.Text = 'Documents' then node.SetIcon(FIconDocuments)
+    else if node.Text = 'Downloads' then node.SetIcon(FIconDownloads)
+    else if node.Text = 'Pictures' then node.SetIcon(FIconPictures)
+    else if node.Text = 'Music' then node.SetIcon(FIconMusic)
+    else if node.Text = 'Videos' then node.SetIcon(FIconPictures)
+    else if node.Text = 'Root' then node.SetIcon(FIconDrive);
+  end;
 end;
 
 function TFileSamaWindow.GetCurrentPath(): string;
@@ -177,6 +280,9 @@ begin
   w := FindWidget('btnRefresh');
   if w is TFtButton then FBtnRefresh := TFtButton(w);
 
+  w := FindWidget('btnNewFolder');
+  if w is TFtButton then FBtnNewFolder := TFtButton(w);
+
   w := FindWidget('fileContextMenu');
   if w is TFtPopupMenu then FContextMenu := TFtPopupMenu(w);
 
@@ -186,6 +292,7 @@ begin
   if FBtnUp <> nil then FBtnUp.OnClick := @ActionUp;
   if FBtnHome <> nil then FBtnHome.OnClick := @ActionHome;
   if FBtnRefresh <> nil then FBtnRefresh.OnClick := @ActionRefresh;
+  if FBtnNewFolder <> nil then FBtnNewFolder.OnClick := @ActionNewFolder;
 
   // Wire up widget signals
   if FPathBar <> nil then FPathBar.OnNavigate := @HandlePathNavigate;
@@ -228,6 +335,8 @@ begin
   HookMenu('ctxRenameItem', @MenuRename);
   HookMenu('ctxDeleteItem', @MenuDelete);
   HookMenu('ctxPropertiesItem', @MenuProperties);
+
+  SetupPlacesIcons();
 end;
 
 procedure TFileSamaWindow.HookMenu(const AId: string; AHandler: TFtMenuClickEvent);
@@ -301,6 +410,7 @@ begin
     FFileTable.SetCell(rowIdx, 1, item.SizeFormatted);
     FFileTable.SetCell(rowIdx, 2, item.TypeDescription);
     FFileTable.SetCell(rowIdx, 3, item.ModTimeFormatted);
+    FFileTable.SetCellIcon(rowIdx, 0, GetFileIcon(item.IsDirectory, item.Name));
   end;
 end;
 
@@ -441,6 +551,11 @@ end;
 procedure TFileSamaWindow.ActionRefresh(Sender: TFtButton);
 begin
   NavigateTo(FModel.CurrentPath, False);
+end;
+
+procedure TFileSamaWindow.ActionNewFolder(Sender: TFtButton);
+begin
+  MenuNewFolder(nil);
 end;
 
 // -----------------------------------------------------------------------------
