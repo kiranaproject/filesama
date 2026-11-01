@@ -46,6 +46,7 @@ type
 
     procedure Clear();
     procedure ScanDirectory(const APath: string);
+    procedure SearchRecursive(const ARootPath, AQuery: string; AMaxDepth: Integer = 5);
     procedure Sort(AColumn: Integer; AAscending: Boolean);
 
     function FormatFileSize(Bytes: Int64): string;
@@ -295,6 +296,90 @@ begin
     end;
   end;
 
+  Sort(FSortColumn, FSortAscending);
+end;
+
+procedure TDirectoryModel.SearchRecursive(const ARootPath, AQuery: string; AMaxDepth: Integer);
+var
+  resolved, queryLower: string;
+
+  procedure Recurse(const ADir: string; CurrentDepth: Integer);
+  var
+    sr: TSearchRec;
+    st: stat;
+    full, relName: string;
+    item: TFileItem;
+    matches: Boolean;
+  begin
+    if CurrentDepth > AMaxDepth then Exit;
+    if FindFirst(IncludeTrailingPathDelimiter(ADir) + '*', faAnyFile or faHidden, sr) = 0 then
+    begin
+      try
+        repeat
+          if (sr.Name = '.') or (sr.Name = '..') then Continue;
+          if not FShowHidden and (Length(sr.Name) > 0) and (sr.Name[1] = '.') then Continue;
+
+          full := IncludeTrailingPathDelimiter(ADir) + sr.Name;
+          matches := (queryLower = '') or (Pos(queryLower, LowerCase(sr.Name)) > 0);
+
+          if matches then
+          begin
+            item := TFileItem.Create();
+            relName := Copy(full, Length(resolved) + 1, MaxInt);
+            if (Length(relName) > 0) and (relName[1] = '/') then
+              relName := Copy(relName, 2, MaxInt);
+            item.Name := relName;
+            item.FullPath := full;
+            item.IsDirectory := (sr.Attr and faDirectory) <> 0;
+            item.IsHidden := (Length(sr.Name) > 0) and (sr.Name[1] = '.');
+            item.Size := sr.Size;
+
+            if fpLstat(PChar(full), st) = 0 then
+            begin
+              item.IsDirectory := fpS_ISDIR(st.st_mode);
+              item.IsSymlink := fpS_ISLNK(st.st_mode);
+              item.Size := st.st_size;
+              item.Permissions := FormatPermissions(st.st_mode);
+              item.ModTime := UnixToDateTime(st.st_mtime);
+            end
+            else
+            begin
+              item.IsSymlink := (sr.Attr and faSymLink) <> 0;
+              item.Permissions := 'rw-r--r--';
+              item.ModTime := FileDateToDateTime(sr.Time);
+            end;
+
+            item.ModTimeFormatted := FormatDateTime('yyyy-mm-dd hh:nn', item.ModTime);
+            item.MimeType := DetectMimeType(sr.Name, item.IsDirectory);
+            item.TypeDescription := GetTypeDescription(sr.Name, item.IsDirectory);
+
+            if item.IsDirectory then
+              item.SizeFormatted := '--'
+            else
+              item.SizeFormatted := FormatFileSize(item.Size);
+
+            FItems.Add(item);
+          end;
+
+          if ((sr.Attr and faDirectory) <> 0) and ((sr.Attr and faSymLink) = 0) then
+            Recurse(full, CurrentDepth + 1);
+
+        until FindNext(sr) <> 0;
+      finally
+        FindClose(sr);
+      end;
+    end;
+  end;
+
+begin
+  Clear();
+  resolved := ExpandFileName(ARootPath);
+  if not DirectoryExists(resolved) then Exit;
+
+  FCurrentPath := resolved;
+  queryLower := LowerCase(Trim(AQuery));
+
+  Recurse(resolved, 1);
   Sort(FSortColumn, FSortAscending);
 end;
 

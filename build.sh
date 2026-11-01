@@ -36,10 +36,16 @@ ensure_ftml() {
 }
 
 ensure_libft() {
-  if [ -f "${FTPAS_DIR}/target/libft.so" ]; then
+  local SRC_LIB=""
+  if [ -f "../floria-toolkit/target/libft.so" ]; then
+    SRC_LIB="../floria-toolkit/target/libft.so"
+  elif [ -f "${FTPAS_DIR}/target/libft.so" ]; then
+    SRC_LIB="${FTPAS_DIR}/target/libft.so"
+  fi
+  if [ -n "${SRC_LIB}" ]; then
     mkdir -p target
-    if [ ! -f target/libft.so ]; then
-      cp -f "${FTPAS_DIR}/target/libft.so" target/libft.so
+    if [ ! -f target/libft.so ] || [ "${SRC_LIB}" -nt target/libft.so ]; then
+      cp -f "${SRC_LIB}" target/libft.so
     fi
   fi
 }

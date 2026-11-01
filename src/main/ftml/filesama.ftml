@@ -27,12 +27,18 @@ Container {
 
     Menu {
       title: "Edit";
-      MenuItem { id: cutItem;       text: "Cut";            shortcut: "Ctrl+X"; }
-      MenuItem { id: copyItem;      text: "Copy";           shortcut: "Ctrl+C"; }
-      MenuItem { id: renameItem;    text: "Rename...";      shortcut: "F2"; }
-      MenuItem { id: deleteItem;    text: "Move to Trash";  shortcut: "Delete"; }
+      MenuItem { id: cutItem;             text: "Cut";                 shortcut: "Ctrl+X"; }
+      MenuItem { id: copyItem;            text: "Copy";                shortcut: "Ctrl+C"; }
+      MenuItem { id: pasteItem;           text: "Paste";               shortcut: "Ctrl+V"; }
       Separator { }
-      MenuItem { id: selectAllItem; text: "Select All";     shortcut: "Ctrl+A"; }
+      MenuItem { id: renameItem;          text: "Rename...";           shortcut: "F2"; }
+      MenuItem { id: deleteItem;          text: "Move to Trash";       shortcut: "Delete"; }
+      MenuItem { id: deletePermanentItem; text: "Delete Permanently";  shortcut: "Shift+Delete"; }
+      Separator { }
+      MenuItem { id: selectAllItem;       text: "Select All";          shortcut: "Ctrl+A"; }
+      Separator { }
+      MenuItem { id: searchItem;          text: "Search...";           shortcut: "Ctrl+F"; }
+      MenuItem { id: searchRecursiveItem; text: "Search Recursively";  shortcut: "Ctrl+Shift+F"; }
     }
 
     Menu {
@@ -51,6 +57,7 @@ Container {
       Separator { }
       MenuItem { id: goParentItem;    text: "Parent Directory"; shortcut: "Alt+Up"; }
       MenuItem { id: goRootItem;      text: "Root Filesystem"; }
+      MenuItem { id: goLocationItem;  text: "Location...";     shortcut: "Ctrl+L"; }
     }
 
     Menu {
@@ -115,6 +122,10 @@ Container {
       }
       TreeNode {
         text: "Root";
+        expanded: true;
+      }
+      TreeNode {
+        text: "Trash";
         expanded: true;
       }
     }
@@ -350,23 +361,39 @@ Container {
     MenuItem {
       id: ctxCutItem;
       text: "Cut";
+      shortcut: "Ctrl+X";
     }
     MenuItem {
       id: ctxCopyItem;
       text: "Copy";
+      shortcut: "Ctrl+C";
     }
+    MenuItem {
+      id: ctxPasteItem;
+      text: "Paste";
+      shortcut: "Ctrl+V";
+    }
+    Separator { }
     MenuItem {
       id: ctxRenameItem;
       text: "Rename...";
+      shortcut: "F2";
     }
     MenuItem {
       id: ctxDeleteItem;
       text: "Move to Trash";
+      shortcut: "Delete";
+    }
+    MenuItem {
+      id: ctxDeletePermanentItem;
+      text: "Delete Permanently";
+      shortcut: "Shift+Delete";
     }
     Separator { }
     MenuItem {
       id: ctxPropertiesItem;
       text: "Properties";
+      shortcut: "Alt+Return";
     }
   }
 }

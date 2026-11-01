@@ -27,6 +27,7 @@ type
     procedure TestHiddenFileFiltering();
     procedure TestSorting();
     procedure TestPathOps();
+    procedure TestSearchRecursive();
   end;
 
 implementation
@@ -165,6 +166,29 @@ begin
 
   AssertTrue('Home dir not empty', Length(GetHomeDir()) > 0);
   AssertTrue('Desktop dir not empty', Length(GetDesktopDir()) > 0);
+end;
+
+procedure TDirectoryModelTest.TestSearchRecursive();
+begin
+  with TFileStream.Create(FTestDir + '/alpha_dir/nested.txt', fmCreate) do
+  try
+    WriteBuffer('test', 4);
+  finally
+    Free();
+  end;
+  try
+    FModel.SearchRecursive(FTestDir, 'txt');
+    AssertEquals('Should find 2 txt files', 2, FModel.Count);
+
+    FModel.SearchRecursive(FTestDir, 'nested');
+    AssertEquals('Should find 1 nested file', 1, FModel.Count);
+    AssertEquals('Relative name is alpha_dir/nested.txt', 'alpha_dir/nested.txt', FModel[0].Name);
+
+    FModel.SearchRecursive(FTestDir, 'nonexistent');
+    AssertEquals('Should find 0 matches', 0, FModel.Count);
+  finally
+    DeleteFile(FTestDir + '/alpha_dir/nested.txt');
+  end;
 end;
 
 initialization

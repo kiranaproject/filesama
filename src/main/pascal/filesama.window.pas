@@ -63,13 +63,18 @@ type
     FIconPictures    : TFtBitmap;
     FIconMusic       : TFtBitmap;
     FIconDrive       : TFtBitmap;
+    FIconTrash       : TFtBitmap;
+    FIconVideos      : TFtBitmap;
+    FIconBookmark    : TFtBitmap;
+    FSearchRecursive : Boolean;
 
     function  GetCurrentPath(): string;
     procedure InitIcons();
     procedure FreeIcons();
-    procedure SetupPlacesIcons();
+    procedure SetupPlacesTree();
     function  GetFileIcon(AIsDirectory: Boolean; const AFileName: string; AGrid: Boolean = False): TFtBitmap;
     function  GetSelectedItem(out AItem: TFileItem): Boolean;
+    function  PromptRename(const ACurrentName: string; out ANewName: string): Boolean;
     procedure SetViewMode(AMode: TFileSamaViewMode);
     procedure SetupUI();
     procedure HookMenu(const AId: string; AHandler: TFtMenuClickEvent);
@@ -85,6 +90,7 @@ type
     procedure HandleColumnClick(Sender: TFtTable; ColumnIndex: Integer);
     procedure HandleGridSelect(Sender: TFtIconView; ItemIndex: Integer);
     procedure HandleGridActivate(Sender: TFtIconView; ItemIndex: Integer);
+    procedure HandleWindowKey(Sender: TFtWindow; AKey: LongWord; AIsDown: Boolean);
 
     // Menu actions
     procedure MenuNewFolder(Sender: TFtMenuItem);
@@ -92,9 +98,13 @@ type
     procedure MenuQuit(Sender: TFtMenuItem);
     procedure MenuCut(Sender: TFtMenuItem);
     procedure MenuCopy(Sender: TFtMenuItem);
+    procedure MenuPaste(Sender: TFtMenuItem);
     procedure MenuRename(Sender: TFtMenuItem);
     procedure MenuDelete(Sender: TFtMenuItem);
+    procedure MenuDeletePermanent(Sender: TFtMenuItem);
     procedure MenuSelectAll(Sender: TFtMenuItem);
+    procedure MenuSearch(Sender: TFtMenuItem);
+    procedure MenuSearchRecursive(Sender: TFtMenuItem);
     procedure MenuToggleHidden(Sender: TFtMenuItem);
     procedure MenuRefresh(Sender: TFtMenuItem);
     procedure MenuGoHome(Sender: TFtMenuItem);
@@ -103,6 +113,7 @@ type
     procedure MenuGoDownloads(Sender: TFtMenuItem);
     procedure MenuGoParent(Sender: TFtMenuItem);
     procedure MenuGoRoot(Sender: TFtMenuItem);
+    procedure MenuGoLocation(Sender: TFtMenuItem);
     procedure MenuOpenTerminal(Sender: TFtMenuItem);
     procedure MenuAbout(Sender: TFtMenuItem);
     procedure MenuOpenSelection(Sender: TFtMenuItem);
@@ -156,6 +167,7 @@ begin
   FHistory := TStringList.Create();
   FHistoryIndex := -1;
   FFilterQuery := '';
+  FSearchRecursive := False;
   FNavigating := False;
 
   InitIcons();
@@ -170,7 +182,28 @@ begin
 end;
 
 destructor TFileSamaWindow.Destroy();
+
+  procedure FreeAllNodeData(ANode: TFtTreeNode);
+  var
+    j: Integer;
+    ch: TFtTreeNode;
+  begin
+    if ANode = nil then Exit;
+    if Assigned(ANode.Data) then
+    begin
+      FreeMem(ANode.Data);
+      ANode.Data := nil;
+    end;
+    for j := 0 to ANode.ChildCount - 1 do
+    begin
+      ch := ANode.Children[j];
+      FreeAllNodeData(ch);
+      ch.Free();
+    end;
+  end;
 begin
+  if (FPlacesTree <> nil) and (FPlacesTree.Root <> nil) then
+    FreeAllNodeData(FPlacesTree.Root);
   FreeIcons();
   FHistory.Free();
   FModel.Free();
@@ -201,6 +234,9 @@ begin
   FIconPictures  := FtApp().GetIconBitmap('outline-pictures', 16, 16, isDark);
   FIconMusic     := FtApp().GetIconBitmap('outline-music', 16, 16, isDark);
   FIconDrive     := FtApp().GetIconBitmap('outline-drive', 16, 16, isDark);
+  FIconTrash     := FtApp().GetIconBitmap('outline-trash', 16, 16, isDark);
+  FIconVideos    := FtApp().GetIconBitmap('outline-videos', 16, 16, isDark);
+  FIconBookmark  := FtApp().GetIconBitmap('outline-bookmark', 16, 16, isDark);
 end;
 
 procedure TFileSamaWindow.FreeIcons();
@@ -222,6 +258,9 @@ begin
   FreeAndNil(FIconPictures);
   FreeAndNil(FIconMusic);
   FreeAndNil(FIconDrive);
+  FreeAndNil(FIconTrash);
+  FreeAndNil(FIconVideos);
+  FreeAndNil(FIconBookmark);
 end;
 
 function TFileSamaWindow.GetFileIcon(AIsDirectory: Boolean; const AFileName: string; AGrid: Boolean = False): TFtBitmap;
@@ -259,24 +298,169 @@ begin
   end;
 end;
 
-procedure TFileSamaWindow.SetupPlacesIcons();
+procedure TFileSamaWindow.SetupPlacesTree();
 var
-  i: Integer;
-  node: TFtTreeNode;
-begin
-  if (FPlacesTree = nil) or (FPlacesTree.Root = nil) then Exit;
-  for i := 0 to FPlacesTree.Root.ChildCount - 1 do
+  homeDir, bkmkFile, line, uri, bLabel, bPath, sub, dev, mnt: string;
+  spacePos: Integer;
+  tf: TextFile;
+  seenMounts: TStringList;
+
+  procedure FreeAllNodeData(ANode: TFtTreeNode);
+  var
+    j: Integer;
+    ch: TFtTreeNode;
   begin
-    node := FPlacesTree.Root.Children[i];
-    if node = nil then Continue;
-    if node.Text = 'Home' then node.SetIcon(FIconHome)
-    else if node.Text = 'Desktop' then node.SetIcon(FIconDesktop)
-    else if node.Text = 'Documents' then node.SetIcon(FIconDocuments)
-    else if node.Text = 'Downloads' then node.SetIcon(FIconDownloads)
-    else if node.Text = 'Pictures' then node.SetIcon(FIconPictures)
-    else if node.Text = 'Music' then node.SetIcon(FIconMusic)
-    else if node.Text = 'Videos' then node.SetIcon(FIconPictures)
-    else if node.Text = 'Root' then node.SetIcon(FIconDrive);
+    if ANode = nil then Exit;
+    if Assigned(ANode.Data) then
+    begin
+      FreeMem(ANode.Data);
+      ANode.Data := nil;
+    end;
+    for j := 0 to ANode.ChildCount - 1 do
+    begin
+      ch := ANode.Children[j];
+      FreeAllNodeData(ch);
+      ch.Free();
+    end;
+  end;
+
+  procedure AddPlaceNode(const AText, APath: string; AIcon: TFtBitmap);
+  var
+    n: TFtTreeNode;
+    pathBuf: PChar;
+  begin
+    if (APath <> homeDir) and (APath <> '/') and not DirectoryExists(APath) then
+      Exit;
+    n := FPlacesTree.AddNode(AText);
+    n.Expanded := True;
+    n.SetIcon(AIcon);
+    GetMem(pathBuf, Length(APath) + 1);
+    Move(Pointer(APath)^, pathBuf^, Length(APath));
+    pathBuf[Length(APath)] := #0;
+    n.Data := pathBuf;
+  end;
+
+  function DecodeMountEscape(const S: string): string;
+  begin
+    Result := StringReplace(S, '\040', ' ', [rfReplaceAll]);
+    Result := StringReplace(Result, '\011', #9, [rfReplaceAll]);
+    Result := StringReplace(Result, '\012', #10, [rfReplaceAll]);
+    Result := StringReplace(Result, '\134', '\', [rfReplaceAll]);
+  end;
+
+begin
+  if FPlacesTree = nil then Exit;
+  if FPlacesTree.Root <> nil then
+  begin
+    FreeAllNodeData(FPlacesTree.Root);
+    FPlacesTree.Clear();
+  end;
+
+  homeDir := GetHomeDir();
+
+  { Places }
+  AddPlaceNode('Home',      homeDir, FIconHome);
+  AddPlaceNode('Desktop',   GetDesktopDir(), FIconDesktop);
+  AddPlaceNode('Documents', GetDocumentsDir(), FIconDocuments);
+  AddPlaceNode('Downloads', GetDownloadsDir(), FIconDownloads);
+  AddPlaceNode('Pictures',  GetPicturesDir(), FIconPictures);
+  AddPlaceNode('Music',     GetMusicDir(), FIconMusic);
+  AddPlaceNode('Videos',    GetVideosDir(), FIconVideos);
+  AddPlaceNode('Trash',     GetTrashFilesDir(), FIconTrash);
+
+  { Bookmarks from ~/.config/gtk-3.0/bookmarks }
+  bkmkFile := homeDir + '/.config/gtk-3.0/bookmarks';
+  if FileExists(bkmkFile) then
+  begin
+    AssignFile(tf, bkmkFile);
+    {$I-}
+    Reset(tf);
+    {$I+}
+    if IOResult = 0 then
+    begin
+      while not Eof(tf) do
+      begin
+        ReadLn(tf, line);
+        line := Trim(line);
+        if (line = '') or (line[1] = '#') then Continue;
+        if Pos('file://', line) = 1 then
+        begin
+          spacePos := Pos(' ', line);
+          if spacePos > 0 then
+          begin
+            uri := Copy(line, 1, spacePos - 1);
+            bLabel := Trim(Copy(line, spacePos + 1, MaxInt));
+          end
+          else
+          begin
+            uri := line;
+            bLabel := '';
+          end;
+          bPath := UriToPath(uri);
+          if bLabel = '' then
+            bLabel := ExtractFileName(bPath);
+          if bLabel = '' then
+            bLabel := bPath;
+          if (bPath <> homeDir) and
+             (bPath <> GetDesktopDir()) and
+             (bPath <> GetDocumentsDir()) and
+             (bPath <> GetDownloadsDir()) and
+             (bPath <> GetPicturesDir()) and
+             (bPath <> GetMusicDir()) and
+             (bPath <> GetVideosDir()) and
+             DirectoryExists(bPath) then
+            AddPlaceNode(bLabel, bPath, FIconBookmark);
+        end;
+      end;
+      CloseFile(tf);
+    end;
+  end;
+
+  { Devices / Mounts }
+  AddPlaceNode('Root', '/', FIconDrive);
+
+  seenMounts := TStringList.Create();
+  try
+    seenMounts.Add('/');
+    if FileExists('/proc/mounts') then
+    begin
+      AssignFile(tf, '/proc/mounts');
+      {$I-}
+      Reset(tf);
+      {$I+}
+      if IOResult = 0 then
+      begin
+        while not Eof(tf) do
+        begin
+          ReadLn(tf, line);
+          line := Trim(line);
+          if line = '' then Continue;
+          spacePos := Pos(' ', line);
+          if spacePos = 0 then Continue;
+          dev := Copy(line, 1, spacePos - 1);
+          sub := Trim(Copy(line, spacePos + 1, MaxInt));
+          spacePos := Pos(' ', sub);
+          if spacePos = 0 then Continue;
+          mnt := DecodeMountEscape(Copy(sub, 1, spacePos - 1));
+
+          if (Pos('/media/', mnt) = 1) or
+             (Pos('/run/media/', mnt) = 1) or
+             (Pos('/mnt/', mnt) = 1) then
+          begin
+            if (seenMounts.IndexOf(mnt) < 0) and DirectoryExists(mnt) then
+            begin
+              seenMounts.Add(mnt);
+              bLabel := ExtractFileName(mnt);
+              if bLabel = '' then bLabel := mnt;
+              AddPlaceNode(bLabel, mnt, FIconDrive);
+            end;
+          end;
+        end;
+        CloseFile(tf);
+      end;
+    end;
+  finally
+    seenMounts.Free();
   end;
 end;
 
@@ -392,8 +576,10 @@ begin
   HookMenu('quitItem', @MenuQuit);
   HookMenu('cutItem', @MenuCut);
   HookMenu('copyItem', @MenuCopy);
+  HookMenu('pasteItem', @MenuPaste);
   HookMenu('renameItem', @MenuRename);
   HookMenu('deleteItem', @MenuDelete);
+  HookMenu('deletePermanentItem', @MenuDeletePermanent);
   HookMenu('selectAllItem', @MenuSelectAll);
   HookMenu('refreshItem', @MenuRefresh);
   HookMenu('showHiddenItem', @MenuToggleHidden);
@@ -403,19 +589,29 @@ begin
   HookMenu('goDownloadsItem', @MenuGoDownloads);
   HookMenu('goParentItem', @MenuGoParent);
   HookMenu('goRootItem', @MenuGoRoot);
+  HookMenu('goLocationItem', @MenuGoLocation);
   HookMenu('openTerminalItem', @MenuOpenTerminal);
   HookMenu('aboutItem', @MenuAbout);
+
+  // Search menu actions
+  HookMenu('searchItem', @MenuSearch);
+  HookMenu('searchRecursiveItem', @MenuSearchRecursive);
 
   // Context menu actions
   HookMenu('ctxOpenItem', @MenuOpenSelection);
   HookMenu('ctxOpenTerminalItem', @MenuOpenTerminal);
   HookMenu('ctxCutItem', @MenuCut);
   HookMenu('ctxCopyItem', @MenuCopy);
+  HookMenu('ctxPasteItem', @MenuPaste);
   HookMenu('ctxRenameItem', @MenuRename);
   HookMenu('ctxDeleteItem', @MenuDelete);
+  HookMenu('ctxDeletePermanentItem', @MenuDeletePermanent);
   HookMenu('ctxPropertiesItem', @MenuProperties);
 
-  SetupPlacesIcons();
+  // Window keyboard shortcuts
+  Self.OnKey := @HandleWindowKey;
+
+  SetupPlacesTree();
 end;
 
 procedure TFileSamaWindow.HookMenu(const AId: string; AHandler: TFtMenuClickEvent);
@@ -479,8 +675,8 @@ begin
   begin
     item := FModel[i];
 
-    // Filter check
-    if FFilterQuery <> '' then
+    // Filter check (when not already filtered by recursive search)
+    if (FFilterQuery <> '') and (not FSearchRecursive) and (FFilterQuery[1] <> '*') then
     begin
       matches := Pos(LowerCase(FFilterQuery), LowerCase(item.Name)) > 0;
       if not matches then Continue;
@@ -558,6 +754,12 @@ var
   nodeName: string;
 begin
   if Node = nil then Exit;
+  if Node.Data <> nil then
+  begin
+    NavigateTo(string(PChar(Node.Data)), True);
+    Exit;
+  end;
+
   nodeName := Node.Text;
 
   if nodeName = 'Home' then
@@ -575,7 +777,9 @@ begin
   else if nodeName = 'Videos' then
     NavigateTo(GetVideosDir())
   else if nodeName = 'Root' then
-    NavigateTo('/');
+    NavigateTo('/')
+  else if nodeName = 'Trash' then
+    NavigateTo(GetTrashFilesDir());
 end;
 
 function TFileSamaWindow.GetSelectedItem(out AItem: TFileItem): Boolean;
@@ -721,8 +925,20 @@ begin
 end;
 
 procedure TFileSamaWindow.HandleSearchChange(Sender: TFtWidget; const AText: string);
+var
+  query: string;
 begin
   FFilterQuery := Trim(AText);
+  if FSearchRecursive or ((FFilterQuery <> '') and (FFilterQuery[1] = '*')) then
+  begin
+    query := FFilterQuery;
+    if (query <> '') and (query[1] = '*') then
+      query := Trim(Copy(query, 2, MaxInt));
+    if query <> '' then
+      FModel.SearchRecursive(FModel.CurrentPath, query)
+    else
+      FModel.ScanDirectory(FModel.CurrentPath);
+  end;
   RefreshTable();
 end;
 
@@ -845,24 +1061,367 @@ begin
   end;
 end;
 
+type
+  TRenamePromptSession = class
+  private
+    FWindow: TFtWindow;
+    FEntry: TFtEntry;
+    procedure HandleCancel(Sender: TFtButton);
+    procedure HandleRename(Sender: TFtButton);
+    procedure HandleSubmit(Sender: TFtWidget; const AText: string);
+    procedure HandleKey(Sender: TFtWindow; AKey: LongWord; AIsDown: Boolean);
+  public
+    constructor Create(AWin: TFtWindow; AEnt: TFtEntry);
+  end;
+
+constructor TRenamePromptSession.Create(AWin: TFtWindow; AEnt: TFtEntry);
+begin
+  inherited Create();
+  FWindow := AWin;
+  FEntry := AEnt;
+end;
+
+procedure TRenamePromptSession.HandleCancel(Sender: TFtButton);
+begin
+  FWindow.ModalResult := FT_MODAL_CANCEL;
+  FWindow.Hide();
+end;
+
+procedure TRenamePromptSession.HandleRename(Sender: TFtButton);
+begin
+  FWindow.ModalResult := FT_MODAL_OK;
+  FWindow.Hide();
+end;
+
+procedure TRenamePromptSession.HandleSubmit(Sender: TFtWidget; const AText: string);
+begin
+  FWindow.ModalResult := FT_MODAL_OK;
+  FWindow.Hide();
+end;
+
+procedure TRenamePromptSession.HandleKey(Sender: TFtWindow; AKey: LongWord; AIsDown: Boolean);
+begin
+  if not AIsDown then Exit;
+  if AKey = $FF1B then
+  begin
+    FWindow.ModalResult := FT_MODAL_CANCEL;
+    FWindow.Hide();
+  end
+  else if (AKey = $FF0D) or (AKey = $FF8D) then
+  begin
+    FWindow.ModalResult := FT_MODAL_OK;
+    FWindow.Hide();
+  end;
+end;
+
+function TFileSamaWindow.PromptRename(const ACurrentName: string; out ANewName: string): Boolean;
+var
+  dlg: TFtWindow;
+  lbl: TFtLabel;
+  entry: TFtEntry;
+  btnCancel, btnRename: TFtButton;
+  session: TRenamePromptSession;
+  res: Integer;
+  val: string;
+begin
+  Result := False;
+  ANewName := '';
+  dlg := TFtWindow.Create(380, 140, 'Rename');
+  dlg.WindowType := ftwtDialog;
+  try
+    lbl := TFtLabel.Create(dlg, 20, 16, 340, 20, 'Enter a new name:');
+    entry := TFtEntry.Create(dlg, 20, 44, 340, 32, ACurrentName);
+    btnCancel := TFtButton.Create(dlg, 180, 92, 80, 30, 'Cancel');
+    btnRename := TFtButton.Create(dlg, 270, 92, 90, 30, 'Rename');
+
+    session := TRenamePromptSession.Create(dlg, entry);
+    try
+      btnCancel.OnClick := @session.HandleCancel;
+      btnRename.OnClick := @session.HandleRename;
+      entry.OnSubmit := @session.HandleSubmit;
+      dlg.OnKey := @session.HandleKey;
+
+      dlg.Show();
+      entry.SetFocus();
+      res := dlg.ShowModal();
+      if res = FT_MODAL_OK then
+      begin
+        val := Trim(entry.Text);
+        if (val <> '') and (val <> ACurrentName) then
+        begin
+          ANewName := val;
+          Result := True;
+        end;
+      end;
+    finally
+      session.Free();
+    end;
+  finally
+    dlg.Free();
+  end;
+end;
+
+procedure TFileSamaWindow.HandleWindowKey(Sender: TFtWindow; AKey: LongWord; AIsDown: Boolean);
+var
+  mods: Cardinal;
+  hasCtrl, hasShift, hasAlt: Boolean;
+begin
+  if not AIsDown then Exit;
+
+  // If search filter entry is active and typing, let it handle standard typing
+  if (FSearchEntry <> nil) and FSearchEntry.Focused then
+  begin
+    if AKey = $FF1B then // Escape: clear search and return to list
+    begin
+      FSearchEntry.Text := '';
+      FFilterQuery := '';
+      if FSearchRecursive then
+        FModel.ScanDirectory(FModel.CurrentPath);
+      RefreshTable();
+      if FViewMode = fsvmList then
+      begin
+        if FFileTable <> nil then FFileTable.SetFocus();
+      end
+      else
+      begin
+        if FFileGrid <> nil then FFileGrid.SetFocus();
+      end;
+    end
+    else if (AKey = $FF0D) or (AKey = $FF8D) then // Enter: focus list/grid
+    begin
+      if FViewMode = fsvmList then
+      begin
+        if FFileTable <> nil then FFileTable.SetFocus();
+      end
+      else
+      begin
+        if FFileGrid <> nil then FFileGrid.SetFocus();
+      end;
+    end;
+    Exit;
+  end;
+
+  mods := FtApp().GetKeyboardModifiers();
+  hasCtrl := (mods and FT_KEY_MOD_CONTROL) <> 0;
+  hasShift := (mods and FT_KEY_MOD_SHIFT) <> 0;
+  hasAlt := (mods and FT_KEY_MOD_ALT) <> 0;
+
+  // F2: Rename
+  if AKey = $FFBF then
+  begin
+    MenuRename(nil);
+    Exit;
+  end;
+
+  // F5: Refresh
+  if AKey = $FFC2 then
+  begin
+    MenuRefresh(nil);
+    Exit;
+  end;
+
+  // Delete / Shift+Delete
+  if (AKey = $FFFF) then
+  begin
+    if hasShift then
+      MenuDeletePermanent(nil)
+    else
+      MenuDelete(nil);
+    Exit;
+  end;
+
+  // Alt shortcuts
+  if hasAlt then
+  begin
+    if (AKey = $FF52) then // Alt+Up: Parent Directory
+    begin
+      ActionUp(nil);
+      Exit;
+    end;
+    if (AKey = $FF50) then // Alt+Home: Home Directory
+    begin
+      ActionHome(nil);
+      Exit;
+    end;
+    if (AKey = $FF51) then // Alt+Left: Back
+    begin
+      ActionBack(nil);
+      Exit;
+    end;
+    if (AKey = $FF53) then // Alt+Right: Forward
+    begin
+      ActionForward(nil);
+      Exit;
+    end;
+    if (AKey = $FF0D) or (AKey = $FF8D) then // Alt+Return: Properties
+    begin
+      MenuProperties(nil);
+      Exit;
+    end;
+  end;
+
+  // Ctrl shortcuts
+  if hasCtrl then
+  begin
+    if hasShift and ((AKey = $6E) or (AKey = $4E)) then // Ctrl+Shift+N: New Folder
+    begin
+      MenuNewFolder(nil);
+      Exit;
+    end;
+    if hasShift and ((AKey = $74) or (AKey = $54)) then // Ctrl+Shift+T: Open Terminal
+    begin
+      MenuOpenTerminal(nil);
+      Exit;
+    end;
+    if (AKey = $63) or (AKey = $43) then // Ctrl+C: Copy
+    begin
+      MenuCopy(nil);
+      Exit;
+    end;
+    if (AKey = $78) or (AKey = $58) then // Ctrl+X: Cut
+    begin
+      MenuCut(nil);
+      Exit;
+    end;
+    if (AKey = $76) or (AKey = $56) then // Ctrl+V: Paste
+    begin
+      MenuPaste(nil);
+      Exit;
+    end;
+    if (AKey = $61) or (AKey = $41) then // Ctrl+A: Select All
+    begin
+      MenuSelectAll(nil);
+      Exit;
+    end;
+    if (AKey = $68) or (AKey = $48) then // Ctrl+H: Toggle Hidden
+    begin
+      MenuToggleHidden(nil);
+      Exit;
+    end;
+    if (AKey = $6C) or (AKey = $4C) then // Ctrl+L: Location Bar
+    begin
+      MenuGoLocation(nil);
+      Exit;
+    end;
+    if hasShift and ((AKey = $66) or (AKey = $46)) then // Ctrl+Shift+F: Recursive Search
+    begin
+      MenuSearchRecursive(nil);
+      Exit;
+    end;
+    if (AKey = $66) or (AKey = $46) then // Ctrl+F: Search Filter
+    begin
+      MenuSearch(nil);
+      Exit;
+    end;
+    if (AKey = $71) or (AKey = $51) then // Ctrl+Q: Quit
+    begin
+      MenuQuit(nil);
+      Exit;
+    end;
+  end;
+end;
+
 procedure TFileSamaWindow.MenuQuit(Sender: TFtMenuItem);
 begin
   Close();
 end;
 
-procedure TFileSamaWindow.MenuCut(Sender: TFtMenuItem);
+procedure TFileSamaWindow.MenuSearch(Sender: TFtMenuItem);
 begin
-  // Clipboard cut stub
+  if FSearchEntry <> nil then
+  begin
+    FSearchEntry.SetFocus();
+    FSearchEntry.SelectAll();
+  end;
+end;
+
+procedure TFileSamaWindow.MenuSearchRecursive(Sender: TFtMenuItem);
+begin
+  FSearchRecursive := not FSearchRecursive;
+  if FSearchEntry <> nil then
+  begin
+    FSearchEntry.SetFocus();
+    FSearchEntry.SelectAll();
+  end;
+  if FFilterQuery <> '' then
+  begin
+    if FSearchRecursive then
+      FModel.SearchRecursive(FModel.CurrentPath, FFilterQuery)
+    else
+      FModel.ScanDirectory(FModel.CurrentPath);
+    RefreshTable();
+  end;
+end;
+
+procedure TFileSamaWindow.MenuGoLocation(Sender: TFtMenuItem);
+begin
+  if FPathBar <> nil then
+  begin
+    if FPathBar.Mode = ftpbmBreadcrumbs then
+      FPathBar.Mode := ftpbmEdit
+    else
+      FPathBar.Mode := ftpbmBreadcrumbs;
+  end;
+end;
+
+procedure TFileSamaWindow.MenuCut(Sender: TFtMenuItem);
+var
+  item: TFileItem;
+begin
+  if GetSelectedItem(item) then
+  begin
+    SetFileClipboard([item.FullPath], True);
+    if FStatusText <> nil then
+      FStatusText.Text := Format('Cut "%s" to clipboard', [item.Name]);
+  end;
 end;
 
 procedure TFileSamaWindow.MenuCopy(Sender: TFtMenuItem);
+var
+  item: TFileItem;
 begin
-  // Clipboard copy stub
+  if GetSelectedItem(item) then
+  begin
+    SetFileClipboard([item.FullPath], False);
+    if FStatusText <> nil then
+      FStatusText.Text := Format('Copied "%s" to clipboard', [item.Name]);
+  end;
+end;
+
+procedure TFileSamaWindow.MenuPaste(Sender: TFtMenuItem);
+var
+  pastedCount: Integer;
+begin
+  pastedCount := PasteClipboard(FModel.CurrentPath);
+  if pastedCount > 0 then
+  begin
+    NavigateTo(FModel.CurrentPath, False);
+    if FStatusText <> nil then
+      FStatusText.Text := Format('Pasted %d item(s)', [pastedCount]);
+  end;
 end;
 
 procedure TFileSamaWindow.MenuRename(Sender: TFtMenuItem);
+var
+  item: TFileItem;
+  newName, newPath: string;
 begin
-  // Rename stub
+  if GetSelectedItem(item) then
+  begin
+    if PromptRename(item.Name, newName) then
+    begin
+      newPath := ExtractFilePath(item.FullPath);
+      if (Length(newPath) > 0) and (newPath[Length(newPath)] <> '/') then
+        newPath := newPath + '/';
+      newPath := newPath + newName;
+      if RenameItem(item.FullPath, newPath) then
+      begin
+        NavigateTo(FModel.CurrentPath, False);
+        if FStatusText <> nil then
+          FStatusText.Text := Format('Renamed to "%s"', [newName]);
+      end;
+    end;
+  end;
 end;
 
 procedure TFileSamaWindow.MenuDelete(Sender: TFtMenuItem);
@@ -871,8 +1430,30 @@ var
 begin
   if GetSelectedItem(item) then
   begin
-    DeleteItem(item.FullPath);
-    NavigateTo(FModel.CurrentPath, False);
+    if TrashItem(item.FullPath) then
+    begin
+      NavigateTo(FModel.CurrentPath, False);
+      if FStatusText <> nil then
+        FStatusText.Text := Format('Moved "%s" to trash', [item.Name]);
+    end;
+  end;
+end;
+
+procedure TFileSamaWindow.MenuDeletePermanent(Sender: TFtMenuItem);
+var
+  item: TFileItem;
+begin
+  if GetSelectedItem(item) then
+  begin
+    if TFtMessageDialog.Confirm('Delete Permanently',
+      Format('Are you sure you want to permanently delete "%s"?', [item.Name]),
+      'If you delete an item, it is permanently lost.') then
+    begin
+      DeletePermanently(item.FullPath);
+      NavigateTo(FModel.CurrentPath, False);
+      if FStatusText <> nil then
+        FStatusText.Text := Format('Permanently deleted "%s"', [item.Name]);
+    end;
   end;
 end;
 

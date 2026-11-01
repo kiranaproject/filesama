@@ -8,6 +8,7 @@ program TestRunner;
 uses
   Classes, SysUtils, fpcunit, testregistry, consoletestrunner,
   FileSama.Model.Test,
+  FileSama.Ops.Test,
   FileSama.Window.Test;
 
 var
