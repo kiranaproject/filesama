@@ -210,12 +210,35 @@ Container {
 
       Button {
         id: btnRefresh;
-        anchors.right: searchEntry.left;
+        anchors.right: btnViewList.left;
         anchors.rightMargin: 6;
         y: 2;
         width: 30; height: 30;
         icon: "refresh";
         tooltip: "Refresh (F5)";
+      }
+
+      Button {
+        id: btnViewList;
+        anchors.right: btnViewGrid.left;
+        anchors.rightMargin: 2;
+        y: 2;
+        width: 30; height: 30;
+        icon: "view-list";
+        tooltip: "List View";
+        isToggle: true;
+        checked: true;
+      }
+
+      Button {
+        id: btnViewGrid;
+        anchors.right: searchEntry.left;
+        anchors.rightMargin: 6;
+        y: 2;
+        width: 30; height: 30;
+        icon: "view-grid";
+        tooltip: "Grid View";
+        isToggle: true;
       }
 
       Entry {
@@ -263,6 +286,18 @@ Container {
         width: 90;
         align: "left";
       }
+    }
+
+    // ── File Grid (Icon View) ──
+    IconView {
+      id: fileGrid;
+      anchors.top: toolBar.bottom;
+      anchors.topMargin: 4;
+      anchors.left: parent.left;
+      anchors.right: parent.right;
+      anchors.bottom: parent.bottom;
+      drawFrame: false;
+      visible: false;
     }
   }
 

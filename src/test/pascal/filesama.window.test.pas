@@ -27,6 +27,7 @@ type
     procedure TestNavigationHistoryStack();
     procedure TestSearchFilter();
     procedure TestResizeWidgetBounds();
+    procedure TestViewModeSwitching();
   end;
 
 implementation
@@ -141,7 +142,7 @@ end;
 
 procedure TFileWindowTest.TestResizeWidgetBounds();
 var
-  tb, pb, bHome, bNew, bHid, bRef, se, ca: TFtWidget;
+  tb, pb, bHome, bNew, bHid, bRef, bVList, bVGrid, se, ca, fg: TFtWidget;
 begin
   tb := FWindow.FindWidget('toolBar');
   pb := FWindow.PathBar;
@@ -149,8 +150,11 @@ begin
   bNew := FWindow.FindWidget('btnNewFolder');
   bHid := FWindow.FindWidget('btnHidden');
   bRef := FWindow.FindWidget('btnRefresh');
+  bVList := FWindow.FindWidget('btnViewList');
+  bVGrid := FWindow.FindWidget('btnViewGrid');
   se := FWindow.SearchEntry;
   ca := FWindow.FindWidget('contentArea');
+  fg := FWindow.FileGrid;
 
   AssertNotNull('toolBar must exist', tb);
   AssertNotNull('pathBar must exist', pb);
@@ -158,11 +162,16 @@ begin
   AssertNotNull('btnNewFolder must exist', bNew);
   AssertNotNull('btnHidden must exist', bHid);
   AssertNotNull('btnRefresh must exist', bRef);
+  AssertNotNull('btnViewList must exist', bVList);
+  AssertNotNull('btnViewGrid must exist', bVGrid);
   AssertNotNull('searchEntry must exist', se);
   AssertNotNull('contentArea must exist', ca);
+  AssertNotNull('fileGrid must exist', fg);
 
   AssertFalse('placesTree DrawFrame must be False', TFtContainer(FWindow.FindWidget('placesTree')).DrawFrame);
   AssertFalse('fileTable DrawFrame must be False', TFtContainer(FWindow.FindWidget('fileTable')).DrawFrame);
+  AssertFalse('fileGrid DrawFrame must be False', TFtContainer(fg).DrawFrame);
+  AssertFalse('fileGrid must initially be hidden', fg.Visible);
   AssertFalse('contentArea DrawFrame must be False', TFtContainer(FWindow.FindWidget('contentArea')).DrawFrame);
   AssertFalse('toolBar DrawFrame must be False', TFtContainer(FWindow.FindWidget('toolBar')).DrawFrame);
   AssertFalse('sidebar DrawFrame must be False', TFtContainer(FWindow.FindWidget('sidebar')).DrawFrame);
@@ -185,16 +194,22 @@ begin
 
   AssertEquals('pathBar X at 800x500', 336, pb.X);
   AssertEquals('pathBar Y at 800x500', 34, pb.Y);
-  AssertEquals('pathBar Width at 800x500', 196, pb.Width);
+  AssertEquals('pathBar Width at 800x500', 128, pb.Width);
 
-  AssertEquals('btnNewFolder X at 800x500', 538, bNew.X);
+  AssertEquals('btnNewFolder X at 800x500', 470, bNew.X);
   AssertEquals('btnNewFolder Y at 800x500', 34, bNew.Y);
 
-  AssertEquals('btnHidden X at 800x500', 572, bHid.X);
+  AssertEquals('btnHidden X at 800x500', 504, bHid.X);
   AssertEquals('btnHidden Y at 800x500', 34, bHid.Y);
 
-  AssertEquals('btnRefresh X at 800x500', 606, bRef.X);
+  AssertEquals('btnRefresh X at 800x500', 538, bRef.X);
   AssertEquals('btnRefresh Y at 800x500', 34, bRef.Y);
+
+  AssertEquals('btnViewList X at 800x500', 574, bVList.X);
+  AssertEquals('btnViewList Y at 800x500', 34, bVList.Y);
+
+  AssertEquals('btnViewGrid X at 800x500', 606, bVGrid.X);
+  AssertEquals('btnViewGrid Y at 800x500', 34, bVGrid.Y);
 
   AssertEquals('searchEntry X at 800x500', 642, se.X);
   AssertEquals('searchEntry Y at 800x500', 34, se.Y);
@@ -217,11 +232,34 @@ begin
 
   AssertEquals('pathBar X at 1180x720', 336, pb.X);
   AssertEquals('pathBar Y at 1180x720', 34, pb.Y);
-  AssertEquals('pathBar Width at 1180x720', 576, pb.Width);
+  AssertEquals('pathBar Width at 1180x720', 508, pb.Width);
+
+  AssertEquals('btnViewList X at 1180x720', 954, bVList.X);
+  AssertEquals('btnViewGrid X at 1180x720', 986, bVGrid.X);
 
   AssertEquals('searchEntry X at 1180x720', 1022, se.X);
   AssertEquals('searchEntry Y at 1180x720', 34, se.Y);
   AssertEquals('searchEntry right edge flush with toolBar', tb.X + tb.Width, se.X + se.Width);
+end;
+
+procedure TFileWindowTest.TestViewModeSwitching();
+begin
+  AssertEquals('Default view mode should be List', Ord(fsvmList), Ord(FWindow.ViewMode));
+  AssertTrue('FileTable should be visible in list mode', FWindow.FileTable.Visible);
+  AssertFalse('FileGrid should be hidden in list mode', FWindow.FileGrid.Visible);
+  AssertEquals('FileGrid item count should equal Model count', FWindow.Model.Count, FWindow.FileGrid.ItemCount);
+
+  // Switch to Grid mode
+  FWindow.ViewMode := fsvmGrid;
+  AssertEquals('View mode should now be Grid', Ord(fsvmGrid), Ord(FWindow.ViewMode));
+  AssertFalse('FileTable should be hidden in grid mode', FWindow.FileTable.Visible);
+  AssertTrue('FileGrid should be visible in grid mode', FWindow.FileGrid.Visible);
+
+  // Switch back to List mode
+  FWindow.ViewMode := fsvmList;
+  AssertEquals('View mode should now be List', Ord(fsvmList), Ord(FWindow.ViewMode));
+  AssertTrue('FileTable should be visible in list mode', FWindow.FileTable.Visible);
+  AssertFalse('FileGrid should be hidden in list mode', FWindow.FileGrid.Visible);
 end;
 
 initialization

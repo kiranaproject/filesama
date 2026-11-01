@@ -14,6 +14,8 @@ uses
   FileSama.Model, FileSama.Ops;
 
 type
+  TFileSamaViewMode = (fsvmList, fsvmGrid);
+
   TFileSamaWindow = class(TFtFTMLForm)
   private
     FModel         : TDirectoryModel;
@@ -21,10 +23,13 @@ type
     FHistoryIndex  : Integer;
     FFilterQuery   : string;
     FNavigating    : Boolean;
+    FViewMode      : TFileSamaViewMode;
+    FFilteredIndices: array of Integer;
 
     // Controls resolved from FTML
     FPathBar       : TFtPathBar;
     FFileTable     : TFtTable;
+    FFileGrid      : TFtIconView;
     FPlacesTree    : TFtTreeView;
     FSearchEntry   : TFtEntry;
     FStatusText    : TFtLabel;
@@ -36,27 +41,36 @@ type
     FBtnRefresh    : TFtButton;
     FBtnNewFolder  : TFtButton;
     FBtnHidden     : TFtButton;
+    FBtnViewList   : TFtButton;
+    FBtnViewGrid   : TFtButton;
     FContextMenu   : TFtPopupMenu;
 
-    { File dialog icon bitmaps }
-    FIconFolder    : TFtBitmap;
-    FIconFile      : TFtBitmap;
-    FIconImage     : TFtBitmap;
-    FIconCode      : TFtBitmap;
-    FIconArchive   : TFtBitmap;
-    FIconHome      : TFtBitmap;
-    FIconDesktop   : TFtBitmap;
-    FIconDocuments : TFtBitmap;
-    FIconDownloads : TFtBitmap;
-    FIconPictures  : TFtBitmap;
-    FIconMusic     : TFtBitmap;
-    FIconDrive     : TFtBitmap;
+    { File icon bitmaps (16px for table, 48px for grid) }
+    FIconFolder16    : TFtBitmap;
+    FIconFile16      : TFtBitmap;
+    FIconImage16     : TFtBitmap;
+    FIconCode16      : TFtBitmap;
+    FIconArchive16   : TFtBitmap;
+    FIconFolder48    : TFtBitmap;
+    FIconFile48      : TFtBitmap;
+    FIconImage48     : TFtBitmap;
+    FIconCode48      : TFtBitmap;
+    FIconArchive48   : TFtBitmap;
+    FIconHome        : TFtBitmap;
+    FIconDesktop     : TFtBitmap;
+    FIconDocuments   : TFtBitmap;
+    FIconDownloads   : TFtBitmap;
+    FIconPictures    : TFtBitmap;
+    FIconMusic       : TFtBitmap;
+    FIconDrive       : TFtBitmap;
 
     function  GetCurrentPath(): string;
     procedure InitIcons();
     procedure FreeIcons();
     procedure SetupPlacesIcons();
-    function  GetFileIcon(AIsDirectory: Boolean; const AFileName: string): TFtBitmap;
+    function  GetFileIcon(AIsDirectory: Boolean; const AFileName: string; AGrid: Boolean = False): TFtBitmap;
+    function  GetSelectedItem(out AItem: TFileItem): Boolean;
+    procedure SetViewMode(AMode: TFileSamaViewMode);
     procedure SetupUI();
     procedure HookMenu(const AId: string; AHandler: TFtMenuClickEvent);
     procedure UpdateNavigationState();
@@ -69,6 +83,8 @@ type
     procedure HandleTableSelectRow(Sender: TFtTable; RowIndex: Integer);
     procedure HandleTableRowDoubleClick(Sender: TFtTable; RowIndex: Integer);
     procedure HandleColumnClick(Sender: TFtTable; ColumnIndex: Integer);
+    procedure HandleGridSelect(Sender: TFtIconView; ItemIndex: Integer);
+    procedure HandleGridActivate(Sender: TFtIconView; ItemIndex: Integer);
 
     // Menu actions
     procedure MenuNewFolder(Sender: TFtMenuItem);
@@ -104,12 +120,16 @@ type
     procedure ActionRefresh(Sender: TFtButton);
     procedure ActionNewFolder(Sender: TFtButton);
     procedure ActionToggleHidden(Sender: TFtButton; AToggled: Boolean);
+    procedure ActionViewList(Sender: TFtButton);
+    procedure ActionViewGrid(Sender: TFtButton);
     procedure HandleSearchChange(Sender: TFtWidget; const AText: string);
 
     property Model: TDirectoryModel read FModel;
     property CurrentPath: string read GetCurrentPath;
+    property ViewMode: TFileSamaViewMode read FViewMode write SetViewMode;
     property PathBar: TFtPathBar read FPathBar;
     property FileTable: TFtTable read FFileTable;
+    property FileGrid: TFtIconView read FFileGrid;
     property PlacesTree: TFtTreeView read FPlacesTree;
     property SearchEntry: TFtEntry read FSearchEntry;
     property StatusText: TFtLabel read FStatusText;
@@ -162,11 +182,18 @@ var
   isDark: Boolean;
 begin
   isDark := FtApp().DarkMode;
-  FIconFolder    := FtApp().GetIconBitmap('folder', 16, 16, isDark);
-  FIconFile      := FtApp().GetIconBitmap('file', 16, 16, isDark);
-  FIconImage     := FtApp().GetIconBitmap('file-image', 16, 16, isDark);
-  FIconCode      := FtApp().GetIconBitmap('file-code', 16, 16, isDark);
-  FIconArchive   := FtApp().GetIconBitmap('file-archive', 16, 16, isDark);
+  FIconFolder16  := FtApp().GetIconBitmap('folder', 16, 16, isDark);
+  FIconFile16    := FtApp().GetIconBitmap('file', 16, 16, isDark);
+  FIconImage16   := FtApp().GetIconBitmap('file-image', 16, 16, isDark);
+  FIconCode16    := FtApp().GetIconBitmap('file-code', 16, 16, isDark);
+  FIconArchive16 := FtApp().GetIconBitmap('file-archive', 16, 16, isDark);
+
+  FIconFolder48  := FtApp().GetIconBitmap('folder', 48, 48, isDark);
+  FIconFile48    := FtApp().GetIconBitmap('file', 48, 48, isDark);
+  FIconImage48   := FtApp().GetIconBitmap('file-image', 48, 48, isDark);
+  FIconCode48    := FtApp().GetIconBitmap('file-code', 48, 48, isDark);
+  FIconArchive48 := FtApp().GetIconBitmap('file-archive', 48, 48, isDark);
+
   FIconHome      := FtApp().GetIconBitmap('outline-home', 16, 16, isDark);
   FIconDesktop   := FtApp().GetIconBitmap('outline-desktop', 16, 16, isDark);
   FIconDocuments := FtApp().GetIconBitmap('outline-documents', 16, 16, isDark);
@@ -178,11 +205,16 @@ end;
 
 procedure TFileSamaWindow.FreeIcons();
 begin
-  FreeAndNil(FIconFolder);
-  FreeAndNil(FIconFile);
-  FreeAndNil(FIconImage);
-  FreeAndNil(FIconCode);
-  FreeAndNil(FIconArchive);
+  FreeAndNil(FIconFolder16);
+  FreeAndNil(FIconFile16);
+  FreeAndNil(FIconImage16);
+  FreeAndNil(FIconCode16);
+  FreeAndNil(FIconArchive16);
+  FreeAndNil(FIconFolder48);
+  FreeAndNil(FIconFile48);
+  FreeAndNil(FIconImage48);
+  FreeAndNil(FIconCode48);
+  FreeAndNil(FIconArchive48);
   FreeAndNil(FIconHome);
   FreeAndNil(FIconDesktop);
   FreeAndNil(FIconDocuments);
@@ -192,29 +224,39 @@ begin
   FreeAndNil(FIconDrive);
 end;
 
-function TFileSamaWindow.GetFileIcon(AIsDirectory: Boolean; const AFileName: string): TFtBitmap;
+function TFileSamaWindow.GetFileIcon(AIsDirectory: Boolean; const AFileName: string; AGrid: Boolean = False): TFtBitmap;
 var
   ext: string;
 begin
   if AIsDirectory then
-    Exit(FIconFolder);
+  begin
+    if AGrid then Exit(FIconFolder48) else Exit(FIconFolder16);
+  end;
 
   ext := LowerCase(ExtractFileExt(AFileName));
   if (ext <> '') and (ext[1] = '.') then
     Delete(ext, 1, 1);
   if (ext = 'png') or (ext = 'jpg') or (ext = 'jpeg') or (ext = 'bmp') or
      (ext = 'svg') or (ext = 'gif') or (ext = 'webp') or (ext = 'ico') then
-    Result := FIconImage
+  begin
+    if AGrid then Result := FIconImage48 else Result := FIconImage16;
+  end
   else if (ext = 'pas') or (ext = 'pp') or (ext = 'c') or (ext = 'h') or
           (ext = 'cpp') or (ext = 'py') or (ext = 'sh') or (ext = 'bash') or
           (ext = 'json') or (ext = 'xml') or (ext = 'html') or (ext = 'css') or
           (ext = 'md') or (ext = 'js') or (ext = 'ts') or (ext = 'sql') then
-    Result := FIconCode
+  begin
+    if AGrid then Result := FIconCode48 else Result := FIconCode16;
+  end
   else if (ext = 'zip') or (ext = 'tar') or (ext = 'gz') or (ext = 'xz') or
           (ext = '7z') or (ext = 'bz2') or (ext = 'rar') then
-    Result := FIconArchive
+  begin
+    if AGrid then Result := FIconArchive48 else Result := FIconArchive16;
+  end
   else
-    Result := FIconFile;
+  begin
+    if AGrid then Result := FIconFile48 else Result := FIconFile16;
+  end;
 end;
 
 procedure TFileSamaWindow.SetupPlacesIcons();
@@ -293,8 +335,34 @@ begin
     FBtnHidden.OnToggle := @ActionToggleHidden;
   end;
 
+  w := FindWidget('btnViewList');
+  if w is TFtButton then
+  begin
+    FBtnViewList := TFtButton(w);
+    FBtnViewList.OnClick := @ActionViewList;
+    FBtnViewList.Toggled := (FViewMode = fsvmList);
+  end;
+
+  w := FindWidget('btnViewGrid');
+  if w is TFtButton then
+  begin
+    FBtnViewGrid := TFtButton(w);
+    FBtnViewGrid.OnClick := @ActionViewGrid;
+    FBtnViewGrid.Toggled := (FViewMode = fsvmGrid);
+  end;
+
   w := FindWidget('fileContextMenu');
   if w is TFtPopupMenu then FContextMenu := TFtPopupMenu(w);
+
+  w := FindWidget('fileGrid');
+  if w is TFtIconView then
+  begin
+    FFileGrid := TFtIconView(w);
+    FFileGrid.OnSelect := @HandleGridSelect;
+    FFileGrid.OnActivate := @HandleGridActivate;
+    if FContextMenu <> nil then
+      FFileGrid.ContextMenuHandle := FContextMenu.Handle;
+  end;
 
   // Wire up button signals
   if FBtnBack <> nil then FBtnBack.OnClick := @ActionBack;
@@ -397,13 +465,15 @@ end;
 
 procedure TFileSamaWindow.RefreshTable();
 var
-  i, rowIdx: Integer;
+  i, rowIdx, gridIdx: Integer;
   item: TFileItem;
   matches: Boolean;
 begin
-  if FFileTable = nil then Exit;
+  if (FFileTable = nil) and (FFileGrid = nil) then Exit;
 
-  FFileTable.ClearRows();
+  if FFileTable <> nil then FFileTable.ClearRows();
+  if FFileGrid <> nil then FFileGrid.Clear();
+  SetLength(FFilteredIndices, 0);
 
   for i := 0 to FModel.Count - 1 do
   begin
@@ -416,12 +486,25 @@ begin
       if not matches then Continue;
     end;
 
-    rowIdx := FFileTable.AddRow();
-    FFileTable.SetCell(rowIdx, 0, item.Name);
-    FFileTable.SetCell(rowIdx, 1, item.SizeFormatted);
-    FFileTable.SetCell(rowIdx, 2, item.ModTimeFormatted);
-    FFileTable.SetCell(rowIdx, 3, item.TypeDescription);
-    FFileTable.SetCellIcon(rowIdx, 0, GetFileIcon(item.IsDirectory, item.Name));
+    SetLength(FFilteredIndices, Length(FFilteredIndices) + 1);
+    FFilteredIndices[High(FFilteredIndices)] := i;
+
+    if FFileTable <> nil then
+    begin
+      rowIdx := FFileTable.AddRow();
+      FFileTable.SetCell(rowIdx, 0, item.Name);
+      FFileTable.SetCell(rowIdx, 1, item.SizeFormatted);
+      FFileTable.SetCell(rowIdx, 2, item.ModTimeFormatted);
+      FFileTable.SetCell(rowIdx, 3, item.TypeDescription);
+      FFileTable.SetCellIcon(rowIdx, 0, GetFileIcon(item.IsDirectory, item.Name, False));
+    end;
+
+    if FFileGrid <> nil then
+    begin
+      gridIdx := FFileGrid.AddItem(item.Name, GetFileIcon(item.IsDirectory, item.Name, True));
+      FFileGrid.Subtexts[gridIdx] := item.SizeFormatted;
+      FFileGrid.Tags[gridIdx] := i;
+    end;
   end;
 end;
 
@@ -495,29 +578,145 @@ begin
     NavigateTo('/');
 end;
 
+function TFileSamaWindow.GetSelectedItem(out AItem: TFileItem): Boolean;
+var
+  selIdx, modelIdx: Integer;
+begin
+  AItem := nil;
+  Result := False;
+  if FViewMode = fsvmList then
+  begin
+    if FFileTable <> nil then
+      selIdx := FFileTable.SelectedRow
+    else
+      selIdx := -1;
+  end
+  else
+  begin
+    if FFileGrid <> nil then
+      selIdx := FFileGrid.SelectedIndex
+    else
+      selIdx := -1;
+  end;
+
+  if (selIdx >= 0) and (selIdx < Length(FFilteredIndices)) then
+  begin
+    modelIdx := FFilteredIndices[selIdx];
+    if (modelIdx >= 0) and (modelIdx < FModel.Count) then
+    begin
+      AItem := FModel[modelIdx];
+      Result := True;
+    end;
+  end;
+end;
+
+procedure TFileSamaWindow.SetViewMode(AMode: TFileSamaViewMode);
+var
+  selIdx: Integer;
+begin
+  FViewMode := AMode;
+  if FBtnViewList <> nil then
+    FBtnViewList.Toggled := (FViewMode = fsvmList);
+  if FBtnViewGrid <> nil then
+    FBtnViewGrid.Toggled := (FViewMode = fsvmGrid);
+
+  if (FFileTable <> nil) and (FFileGrid <> nil) then
+  begin
+    if FViewMode = fsvmList then
+    begin
+      selIdx := FFileGrid.SelectedIndex;
+      FFileGrid.Visible := False;
+      FFileTable.Visible := True;
+      if selIdx >= 0 then
+      begin
+        FFileTable.SelectedRow := selIdx;
+        HandleTableSelectRow(FFileTable, selIdx);
+      end;
+    end
+    else
+    begin
+      selIdx := FFileTable.SelectedRow;
+      FFileTable.Visible := False;
+      FFileGrid.Visible := True;
+      if selIdx >= 0 then
+      begin
+        FFileGrid.SelectedIndex := selIdx;
+        FFileGrid.ScrollIntoView(selIdx);
+        HandleGridSelect(FFileGrid, selIdx);
+      end;
+    end;
+  end;
+end;
+
 procedure TFileSamaWindow.HandleTableSelectRow(Sender: TFtTable; RowIndex: Integer);
 var
+  modelIdx: Integer;
   item: TFileItem;
 begin
-  if (RowIndex >= 0) and (RowIndex < FModel.Count) then
+  if (RowIndex >= 0) and (RowIndex < Length(FFilteredIndices)) then
   begin
-    item := FModel[RowIndex];
-    if FStatusText <> nil then
-      FStatusText.Text := Format('"%s" selected (%s, %s)', [item.Name, item.TypeDescription, item.SizeFormatted]);
+    modelIdx := FFilteredIndices[RowIndex];
+    if (modelIdx >= 0) and (modelIdx < FModel.Count) then
+    begin
+      item := FModel[modelIdx];
+      if FStatusText <> nil then
+        FStatusText.Text := Format('"%s" selected (%s, %s)', [item.Name, item.TypeDescription, item.SizeFormatted]);
+    end;
   end;
 end;
 
 procedure TFileSamaWindow.HandleTableRowDoubleClick(Sender: TFtTable; RowIndex: Integer);
 var
+  modelIdx: Integer;
   item: TFileItem;
 begin
-  if (RowIndex >= 0) and (RowIndex < FModel.Count) then
+  if (RowIndex >= 0) and (RowIndex < Length(FFilteredIndices)) then
   begin
-    item := FModel[RowIndex];
-    if item.IsDirectory then
-      NavigateTo(item.FullPath, True)
-    else
-      LaunchFile(item.FullPath);
+    modelIdx := FFilteredIndices[RowIndex];
+    if (modelIdx >= 0) and (modelIdx < FModel.Count) then
+    begin
+      item := FModel[modelIdx];
+      if item.IsDirectory then
+        NavigateTo(item.FullPath, True)
+      else
+        LaunchFile(item.FullPath);
+    end;
+  end;
+end;
+
+procedure TFileSamaWindow.HandleGridSelect(Sender: TFtIconView; ItemIndex: Integer);
+var
+  modelIdx: Integer;
+  item: TFileItem;
+begin
+  if (ItemIndex >= 0) and (ItemIndex < Length(FFilteredIndices)) then
+  begin
+    modelIdx := FFilteredIndices[ItemIndex];
+    if (modelIdx >= 0) and (modelIdx < FModel.Count) then
+    begin
+      item := FModel[modelIdx];
+      if FStatusText <> nil then
+        FStatusText.Text := Format('"%s" selected (%s, %s)', [item.Name, item.TypeDescription, item.SizeFormatted]);
+    end;
+  end;
+end;
+
+procedure TFileSamaWindow.HandleGridActivate(Sender: TFtIconView; ItemIndex: Integer);
+var
+  modelIdx: Integer;
+  item: TFileItem;
+begin
+  if (ItemIndex >= 0) and (ItemIndex < Length(FFilteredIndices)) then
+  begin
+    modelIdx := FFilteredIndices[ItemIndex];
+    if (modelIdx >= 0) and (modelIdx < FModel.Count) then
+    begin
+      item := FModel[modelIdx];
+      if item.IsDirectory then
+        NavigateTo(item.FullPath, True)
+      else
+        LaunchFile(item.FullPath);
+    end;
   end;
 end;
 
@@ -580,6 +779,16 @@ begin
   NavigateTo(FModel.CurrentPath, False);
 end;
 
+procedure TFileSamaWindow.ActionViewList(Sender: TFtButton);
+begin
+  SetViewMode(fsvmList);
+end;
+
+procedure TFileSamaWindow.ActionViewGrid(Sender: TFtButton);
+begin
+  SetViewMode(fsvmGrid);
+end;
+
 procedure TFileSamaWindow.HandleColumnClick(Sender: TFtTable; ColumnIndex: Integer);
 begin
   if FModel.SortColumn = ColumnIndex then
@@ -612,15 +821,11 @@ end;
 
 procedure TFileSamaWindow.MenuProperties(Sender: TFtMenuItem);
 var
-  selRow: Integer;
   item: TFileItem;
   msg: string;
 begin
-  if FFileTable = nil then Exit;
-  selRow := FFileTable.SelectedRow;
-  if (selRow >= 0) and (selRow < FModel.Count) then
+  if GetSelectedItem(item) then
   begin
-    item := FModel[selRow];
     msg := Format('Name: %s' + LineEnding +
                   'Path: %s' + LineEnding +
                   'Type: %s (%s)' + LineEnding +
@@ -662,14 +867,10 @@ end;
 
 procedure TFileSamaWindow.MenuDelete(Sender: TFtMenuItem);
 var
-  selRow: Integer;
   item: TFileItem;
 begin
-  if FFileTable = nil then Exit;
-  selRow := FFileTable.SelectedRow;
-  if (selRow >= 0) and (selRow < FModel.Count) then
+  if GetSelectedItem(item) then
   begin
-    item := FModel[selRow];
     DeleteItem(item.FullPath);
     NavigateTo(FModel.CurrentPath, False);
   end;
@@ -677,8 +878,14 @@ end;
 
 procedure TFileSamaWindow.MenuSelectAll(Sender: TFtMenuItem);
 begin
-  if FFileTable <> nil then
-    FFileTable.SelectAll();
+  if FViewMode = fsvmList then
+  begin
+    if FFileTable <> nil then FFileTable.SelectAll();
+  end
+  else
+  begin
+    if FFileGrid <> nil then FFileGrid.SelectAll();
+  end;
 end;
 
 procedure TFileSamaWindow.MenuToggleHidden(Sender: TFtMenuItem);
@@ -741,14 +948,10 @@ end;
 
 procedure TFileSamaWindow.MenuOpenSelection(Sender: TFtMenuItem);
 var
-  selRow: Integer;
   item: TFileItem;
 begin
-  if FFileTable = nil then Exit;
-  selRow := FFileTable.SelectedRow;
-  if (selRow >= 0) and (selRow < FModel.Count) then
+  if GetSelectedItem(item) then
   begin
-    item := FModel[selRow];
     if item.IsDirectory then
       NavigateTo(item.FullPath, True)
     else
