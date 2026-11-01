@@ -73,6 +73,7 @@ type
     procedure FreeIcons();
     procedure SetupPlacesTree();
     function  GetFileIcon(AIsDirectory: Boolean; const AFileName: string; AGrid: Boolean = False): TFtBitmap;
+    function  GetFileIconName(AIsDirectory: Boolean; const AFileName: string): string;
     function  GetSelectedItem(out AItem: TFileItem): Boolean;
     function  PromptRename(const ACurrentName: string; out ANewName: string): Boolean;
     procedure SetViewMode(AMode: TFileSamaViewMode);
@@ -296,6 +297,30 @@ begin
   begin
     if AGrid then Result := FIconFile48 else Result := FIconFile16;
   end;
+end;
+
+function TFileSamaWindow.GetFileIconName(AIsDirectory: Boolean; const AFileName: string): string;
+var
+  ext: string;
+begin
+  if AIsDirectory then Exit('folder');
+
+  ext := LowerCase(ExtractFileExt(AFileName));
+  if (ext <> '') and (ext[1] = '.') then
+    Delete(ext, 1, 1);
+  if (ext = 'png') or (ext = 'jpg') or (ext = 'jpeg') or (ext = 'bmp') or
+     (ext = 'svg') or (ext = 'gif') or (ext = 'webp') or (ext = 'ico') then
+    Result := 'file-image'
+  else if (ext = 'pas') or (ext = 'pp') or (ext = 'c') or (ext = 'h') or
+          (ext = 'cpp') or (ext = 'py') or (ext = 'sh') or (ext = 'bash') or
+          (ext = 'json') or (ext = 'xml') or (ext = 'html') or (ext = 'css') or
+          (ext = 'md') or (ext = 'js') or (ext = 'ts') or (ext = 'sql') then
+    Result := 'file-code'
+  else if (ext = 'zip') or (ext = 'tar') or (ext = 'gz') or (ext = 'xz') or
+          (ext = '7z') or (ext = 'bz2') or (ext = 'rar') then
+    Result := 'file-archive'
+  else
+    Result := 'file';
 end;
 
 procedure TFileSamaWindow.SetupPlacesTree();
@@ -698,6 +723,7 @@ begin
     if FFileGrid <> nil then
     begin
       gridIdx := FFileGrid.AddItem(item.Name, GetFileIcon(item.IsDirectory, item.Name, True));
+      FFileGrid.IconNames[gridIdx] := GetFileIconName(item.IsDirectory, item.Name);
       FFileGrid.Subtexts[gridIdx] := item.SizeFormatted;
       FFileGrid.Tags[gridIdx] := i;
     end;
@@ -1316,6 +1342,24 @@ begin
     if (AKey = $71) or (AKey = $51) then // Ctrl+Q: Quit
     begin
       MenuQuit(nil);
+      Exit;
+    end;
+    if (AKey = $002B) or (AKey = $003D) or (AKey = $FFAB) then // Ctrl+Plus/Equal/KP_Add: Zoom In
+    begin
+      if (FViewMode = fsvmGrid) and (FFileGrid <> nil) then
+        FFileGrid.ZoomIn();
+      Exit;
+    end;
+    if (AKey = $002D) or (AKey = $FFAD) then // Ctrl+Minus/KP_Subtract: Zoom Out
+    begin
+      if (FViewMode = fsvmGrid) and (FFileGrid <> nil) then
+        FFileGrid.ZoomOut();
+      Exit;
+    end;
+    if (AKey = $0030) or (AKey = $FFB0) then // Ctrl+0: Reset Zoom
+    begin
+      if (FViewMode = fsvmGrid) and (FFileGrid <> nil) then
+        FFileGrid.ZoomLevel := ftizNormal;
       Exit;
     end;
   end;
