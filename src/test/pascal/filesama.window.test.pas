@@ -26,6 +26,7 @@ type
     procedure TestInitialNavigation();
     procedure TestNavigationHistoryStack();
     procedure TestSearchFilter();
+    procedure TestResizeWidgetBounds();
   end;
 
 implementation
@@ -136,6 +137,93 @@ begin
   // Clear filter
   FWindow.HandleSearchChange(nil, '');
   AssertEquals('Restored row count is 3', 3, FWindow.FileTable.RowCount);
+end;
+
+procedure TFileWindowTest.TestResizeWidgetBounds();
+var
+  tb, pb, bHome, bNew, bHid, bRef, se, ca: TFtWidget;
+begin
+  tb := FWindow.FindWidget('toolBar');
+  pb := FWindow.PathBar;
+  bHome := FWindow.FindWidget('btnHome');
+  bNew := FWindow.FindWidget('btnNewFolder');
+  bHid := FWindow.FindWidget('btnHidden');
+  bRef := FWindow.FindWidget('btnRefresh');
+  se := FWindow.SearchEntry;
+  ca := FWindow.FindWidget('contentArea');
+
+  AssertNotNull('toolBar must exist', tb);
+  AssertNotNull('pathBar must exist', pb);
+  AssertNotNull('btnHome must exist', bHome);
+  AssertNotNull('btnNewFolder must exist', bNew);
+  AssertNotNull('btnHidden must exist', bHid);
+  AssertNotNull('btnRefresh must exist', bRef);
+  AssertNotNull('searchEntry must exist', se);
+  AssertNotNull('contentArea must exist', ca);
+
+  // Resize window smaller
+  FWindow.SetBounds(0, 0, 800, 500);
+
+  AssertEquals('contentArea X at 800x500', 190, ca.X);
+  AssertEquals('contentArea Y at 800x500', 28, ca.Y);
+  AssertEquals('contentArea Width at 800x500', 610, ca.Width);
+  AssertEquals('contentArea Height at 800x500', 446, ca.Height);
+
+  AssertEquals('toolBar X at 800x500', 198, tb.X);
+  AssertEquals('toolBar Y at 800x500', 36, tb.Y);
+  AssertEquals('toolBar Width at 800x500', 610, tb.Width);
+
+  AssertEquals('btnHome X at 800x500', 300, bHome.X);
+  AssertEquals('btnHome Y at 800x500', 38, bHome.Y);
+
+  AssertEquals('pathBar X at 800x500', 336, pb.X);
+  AssertEquals('pathBar Y at 800x500', 38, pb.Y);
+  AssertEquals('pathBar Width at 800x500', 212, pb.Width);
+
+  AssertEquals('btnNewFolder X at 800x500', 554, bNew.X);
+  AssertEquals('btnNewFolder Y at 800x500', 38, bNew.Y);
+
+  AssertEquals('btnHidden X at 800x500', 588, bHid.X);
+  AssertEquals('btnHidden Y at 800x500', 38, bHid.Y);
+
+  AssertEquals('btnRefresh X at 800x500', 622, bRef.X);
+  AssertEquals('btnRefresh Y at 800x500', 38, bRef.Y);
+
+  AssertEquals('searchEntry X at 800x500', 658, se.X);
+  AssertEquals('searchEntry Y at 800x500', 38, se.Y);
+  AssertEquals('searchEntry right edge flush with toolBar', tb.X + tb.Width, se.X + se.Width);
+
+  // Resize window larger
+  FWindow.SetBounds(0, 0, 1180, 720);
+
+  AssertEquals('contentArea X at 1180x720', 190, ca.X);
+  AssertEquals('contentArea Y at 1180x720', 28, ca.Y);
+  AssertEquals('contentArea Width at 1180x720', 990, ca.Width);
+  AssertEquals('contentArea Height at 1180x720', 666, ca.Height);
+
+  AssertEquals('toolBar X at 1180x720', 198, tb.X);
+  AssertEquals('toolBar Y at 1180x720', 36, tb.Y);
+  AssertEquals('toolBar Width at 1180x720', 990, tb.Width);
+
+  AssertEquals('btnHome X at 1180x720', 300, bHome.X);
+  AssertEquals('btnHome Y at 1180x720', 38, bHome.Y);
+
+  AssertEquals('pathBar X at 1180x720', 336, pb.X);
+  AssertEquals('pathBar Y at 1180x720', 38, pb.Y);
+  AssertEquals('pathBar Width at 1180x720', 592, pb.Width);
+
+  AssertEquals('btnNewFolder X at 1180x720', 934, bNew.X);
+  AssertEquals('btnNewFolder Y at 1180x720', 38, bNew.Y);
+
+  AssertEquals('btnHidden X at 1180x720', 968, bHid.X);
+  AssertEquals('btnHidden Y at 1180x720', 38, bHid.Y);
+
+  AssertEquals('btnRefresh X at 1180x720', 1002, bRef.X);
+  AssertEquals('btnRefresh Y at 1180x720', 38, bRef.Y);
+
+  AssertEquals('searchEntry X at 1180x720', 1038, se.X);
+  AssertEquals('searchEntry Y at 1180x720', 38, se.Y);
+  AssertEquals('searchEntry right edge flush with toolBar', tb.X + tb.Width, se.X + se.Width);
 end;
 
 initialization
