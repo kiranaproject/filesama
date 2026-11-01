@@ -30,6 +30,8 @@ ensure_ftml() {
     "${FTML_EMBED}" \
       --res src/main/pascal/filesama.res \
       src/main/ftml/filesama.ftml
+    touch src/main/pascal/filesama.window.pas
+    rm -rf target/units target/test-units
   fi
 }
 

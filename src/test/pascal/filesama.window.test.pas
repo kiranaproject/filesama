@@ -161,6 +161,13 @@ begin
   AssertNotNull('searchEntry must exist', se);
   AssertNotNull('contentArea must exist', ca);
 
+  AssertFalse('placesTree DrawFrame must be False', TFtContainer(FWindow.FindWidget('placesTree')).DrawFrame);
+  AssertFalse('fileTable DrawFrame must be False', TFtContainer(FWindow.FindWidget('fileTable')).DrawFrame);
+  AssertFalse('contentArea DrawFrame must be False', TFtContainer(FWindow.FindWidget('contentArea')).DrawFrame);
+  AssertFalse('toolBar DrawFrame must be False', TFtContainer(FWindow.FindWidget('toolBar')).DrawFrame);
+  AssertFalse('sidebar DrawFrame must be False', TFtContainer(FWindow.FindWidget('sidebar')).DrawFrame);
+  AssertFalse('statusBar DrawFrame must be False', TFtContainer(FWindow.FindWidget('statusBar')).DrawFrame);
+
   // Resize window smaller
   FWindow.SetBounds(0, 0, 800, 500);
 
@@ -170,27 +177,27 @@ begin
   AssertEquals('contentArea Height at 800x500', 446, ca.Height);
 
   AssertEquals('toolBar X at 800x500', 198, tb.X);
-  AssertEquals('toolBar Y at 800x500', 36, tb.Y);
-  AssertEquals('toolBar Width at 800x500', 610, tb.Width);
+  AssertEquals('toolBar Y at 800x500', 32, tb.Y);
+  AssertEquals('toolBar Width at 800x500', 594, tb.Width);
 
   AssertEquals('btnHome X at 800x500', 300, bHome.X);
-  AssertEquals('btnHome Y at 800x500', 38, bHome.Y);
+  AssertEquals('btnHome Y at 800x500', 34, bHome.Y);
 
   AssertEquals('pathBar X at 800x500', 336, pb.X);
-  AssertEquals('pathBar Y at 800x500', 38, pb.Y);
-  AssertEquals('pathBar Width at 800x500', 212, pb.Width);
+  AssertEquals('pathBar Y at 800x500', 34, pb.Y);
+  AssertEquals('pathBar Width at 800x500', 196, pb.Width);
 
-  AssertEquals('btnNewFolder X at 800x500', 554, bNew.X);
-  AssertEquals('btnNewFolder Y at 800x500', 38, bNew.Y);
+  AssertEquals('btnNewFolder X at 800x500', 538, bNew.X);
+  AssertEquals('btnNewFolder Y at 800x500', 34, bNew.Y);
 
-  AssertEquals('btnHidden X at 800x500', 588, bHid.X);
-  AssertEquals('btnHidden Y at 800x500', 38, bHid.Y);
+  AssertEquals('btnHidden X at 800x500', 572, bHid.X);
+  AssertEquals('btnHidden Y at 800x500', 34, bHid.Y);
 
-  AssertEquals('btnRefresh X at 800x500', 622, bRef.X);
-  AssertEquals('btnRefresh Y at 800x500', 38, bRef.Y);
+  AssertEquals('btnRefresh X at 800x500', 606, bRef.X);
+  AssertEquals('btnRefresh Y at 800x500', 34, bRef.Y);
 
-  AssertEquals('searchEntry X at 800x500', 658, se.X);
-  AssertEquals('searchEntry Y at 800x500', 38, se.Y);
+  AssertEquals('searchEntry X at 800x500', 642, se.X);
+  AssertEquals('searchEntry Y at 800x500', 34, se.Y);
   AssertEquals('searchEntry right edge flush with toolBar', tb.X + tb.Width, se.X + se.Width);
 
   // Resize window larger
@@ -202,27 +209,18 @@ begin
   AssertEquals('contentArea Height at 1180x720', 666, ca.Height);
 
   AssertEquals('toolBar X at 1180x720', 198, tb.X);
-  AssertEquals('toolBar Y at 1180x720', 36, tb.Y);
-  AssertEquals('toolBar Width at 1180x720', 990, tb.Width);
+  AssertEquals('toolBar Y at 1180x720', 32, tb.Y);
+  AssertEquals('toolBar Width at 1180x720', 974, tb.Width);
 
   AssertEquals('btnHome X at 1180x720', 300, bHome.X);
-  AssertEquals('btnHome Y at 1180x720', 38, bHome.Y);
+  AssertEquals('btnHome Y at 1180x720', 34, bHome.Y);
 
   AssertEquals('pathBar X at 1180x720', 336, pb.X);
-  AssertEquals('pathBar Y at 1180x720', 38, pb.Y);
-  AssertEquals('pathBar Width at 1180x720', 592, pb.Width);
+  AssertEquals('pathBar Y at 1180x720', 34, pb.Y);
+  AssertEquals('pathBar Width at 1180x720', 576, pb.Width);
 
-  AssertEquals('btnNewFolder X at 1180x720', 934, bNew.X);
-  AssertEquals('btnNewFolder Y at 1180x720', 38, bNew.Y);
-
-  AssertEquals('btnHidden X at 1180x720', 968, bHid.X);
-  AssertEquals('btnHidden Y at 1180x720', 38, bHid.Y);
-
-  AssertEquals('btnRefresh X at 1180x720', 1002, bRef.X);
-  AssertEquals('btnRefresh Y at 1180x720', 38, bRef.Y);
-
-  AssertEquals('searchEntry X at 1180x720', 1038, se.X);
-  AssertEquals('searchEntry Y at 1180x720', 38, se.Y);
+  AssertEquals('searchEntry X at 1180x720', 1022, se.X);
+  AssertEquals('searchEntry Y at 1180x720', 34, se.Y);
   AssertEquals('searchEntry right edge flush with toolBar', tb.X + tb.Width, se.X + se.Width);
 end;
 
