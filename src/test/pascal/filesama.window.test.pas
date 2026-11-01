@@ -84,8 +84,8 @@ begin
   AssertEquals('FileTable ColumnCount is 4', 4, FWindow.FileTable.ColumnCount);
   AssertEquals('FileTable column 0 title', 'Name', FWindow.FileTable.ColumnTitles[0]);
   AssertEquals('FileTable column 1 title', 'Size', FWindow.FileTable.ColumnTitles[1]);
-  AssertEquals('FileTable column 2 title', 'Type', FWindow.FileTable.ColumnTitles[2]);
-  AssertEquals('FileTable column 3 title', 'Modified', FWindow.FileTable.ColumnTitles[3]);
+  AssertEquals('FileTable column 2 title', 'Modified', FWindow.FileTable.ColumnTitles[2]);
+  AssertEquals('FileTable column 3 title', 'Type', FWindow.FileTable.ColumnTitles[3]);
 end;
 
 procedure TFileWindowTest.TestInitialNavigation();

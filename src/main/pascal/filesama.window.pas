@@ -35,6 +35,7 @@ type
     FBtnHome       : TFtButton;
     FBtnRefresh    : TFtButton;
     FBtnNewFolder  : TFtButton;
+    FBtnHidden     : TFtButton;
     FContextMenu   : TFtPopupMenu;
 
     { File dialog icon bitmaps }
@@ -67,6 +68,7 @@ type
     procedure HandleTreeSelect(Sender: TFtTreeView; Node: TFtTreeNode);
     procedure HandleTableSelectRow(Sender: TFtTable; RowIndex: Integer);
     procedure HandleTableRowDoubleClick(Sender: TFtTable; RowIndex: Integer);
+    procedure HandleColumnClick(Sender: TFtTable; ColumnIndex: Integer);
 
     // Menu actions
     procedure MenuNewFolder(Sender: TFtMenuItem);
@@ -101,6 +103,7 @@ type
     procedure ActionHome(Sender: TFtButton);
     procedure ActionRefresh(Sender: TFtButton);
     procedure ActionNewFolder(Sender: TFtButton);
+    procedure ActionToggleHidden(Sender: TFtButton; AToggled: Boolean);
     procedure HandleSearchChange(Sender: TFtWidget; const AText: string);
 
     property Model: TDirectoryModel read FModel;
@@ -283,6 +286,13 @@ begin
   w := FindWidget('btnNewFolder');
   if w is TFtButton then FBtnNewFolder := TFtButton(w);
 
+  w := FindWidget('btnHidden');
+  if w is TFtButton then
+  begin
+    FBtnHidden := TFtButton(w);
+    FBtnHidden.OnToggle := @ActionToggleHidden;
+  end;
+
   w := FindWidget('fileContextMenu');
   if w is TFtPopupMenu then FContextMenu := TFtPopupMenu(w);
 
@@ -303,6 +313,7 @@ begin
   begin
     FFileTable.OnSelectRow := @HandleTableSelectRow;
     FFileTable.OnRowDoubleClick := @HandleTableRowDoubleClick;
+    FFileTable.OnColumnClick := @HandleColumnClick;
     if FContextMenu <> nil then
       FFileTable.ContextMenuHandle := FContextMenu.Handle;
   end;
@@ -408,8 +419,8 @@ begin
     rowIdx := FFileTable.AddRow();
     FFileTable.SetCell(rowIdx, 0, item.Name);
     FFileTable.SetCell(rowIdx, 1, item.SizeFormatted);
-    FFileTable.SetCell(rowIdx, 2, item.TypeDescription);
-    FFileTable.SetCell(rowIdx, 3, item.ModTimeFormatted);
+    FFileTable.SetCell(rowIdx, 2, item.ModTimeFormatted);
+    FFileTable.SetCell(rowIdx, 3, item.TypeDescription);
     FFileTable.SetCellIcon(rowIdx, 0, GetFileIcon(item.IsDirectory, item.Name));
   end;
 end;
@@ -558,6 +569,26 @@ begin
   MenuNewFolder(nil);
 end;
 
+procedure TFileSamaWindow.ActionToggleHidden(Sender: TFtButton; AToggled: Boolean);
+var
+  mi: TFtMenuItem;
+begin
+  FModel.ShowHidden := AToggled;
+  mi := FindMenuItem('showHiddenItem');
+  if mi <> nil then
+    mi.Checked := AToggled;
+  NavigateTo(FModel.CurrentPath, False);
+end;
+
+procedure TFileSamaWindow.HandleColumnClick(Sender: TFtTable; ColumnIndex: Integer);
+begin
+  if FModel.SortColumn = ColumnIndex then
+    FModel.Sort(ColumnIndex, not FModel.SortAscending)
+  else
+    FModel.Sort(ColumnIndex, True);
+  RefreshTable();
+end;
+
 // -----------------------------------------------------------------------------
 // Menu Action Handlers
 // -----------------------------------------------------------------------------
@@ -655,6 +686,8 @@ begin
   FModel.ShowHidden := not FModel.ShowHidden;
   if Sender <> nil then
     Sender.Checked := FModel.ShowHidden;
+  if FBtnHidden <> nil then
+    FBtnHidden.Toggled := FModel.ShowHidden;
   NavigateTo(FModel.CurrentPath, False);
 end;
 

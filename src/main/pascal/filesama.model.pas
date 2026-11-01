@@ -315,17 +315,17 @@ begin
         else if A.Size > B.Size then res := 1
         else res := CompareText(A.Name, B.Name);
       end;
-    2: // Type
-      begin
-        res := CompareText(A.TypeDescription, B.TypeDescription);
-        if res = 0 then
-          res := CompareText(A.Name, B.Name);
-      end;
-    3: // ModTime
+    2: // ModTime
       begin
         if A.ModTime < B.ModTime then res := -1
         else if A.ModTime > B.ModTime then res := 1
         else res := CompareText(A.Name, B.Name);
+      end;
+    3: // Type
+      begin
+        res := CompareText(A.TypeDescription, B.TypeDescription);
+        if res = 0 then
+          res := CompareText(A.Name, B.Name);
       end;
     else // Name
       res := CompareText(A.Name, B.Name);

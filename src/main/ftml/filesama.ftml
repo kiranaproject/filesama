@@ -1,8 +1,8 @@
 // @form TFileSamaWindow
 //
 // filesama — desktop file manager window chrome modelled in FTML.
-// Declarative markup defines the menu bar, navigation toolbar, breadcrumbs path bar,
-// places sidebar tree, file details table, status bar, and context menu.
+// Declarative markup defines the menu bar, left places sidebar,
+// content area with navigation toolbar, file table, status bar, and context menu.
 //
 Container {
   id: root;
@@ -64,110 +64,25 @@ Container {
     }
   }
 
-  Panel {
-    id: toolBar;
-    anchors.top: menuBar.bottom;
-    anchors.left: parent.left;
-    anchors.right: parent.right;
-    height: 42;
-    padding: 0;
-
-    Button {
-      id: btnBack;
-      x: 8; y: 5;
-      width: 32; height: 32;
-      icon: "nav-back";
-      tooltip: "Back (Alt+Left)";
-    }
-
-    Button {
-      id: btnForward;
-      x: 44; y: 5;
-      width: 32; height: 32;
-      icon: "nav-forward";
-      tooltip: "Forward (Alt+Right)";
-    }
-
-    Button {
-      id: btnUp;
-      x: 80; y: 5;
-      width: 32; height: 32;
-      icon: "nav-up";
-      tooltip: "Parent Directory (Alt+Up)";
-    }
-
-    Button {
-      id: btnHome;
-      x: 116; y: 5;
-      width: 32; height: 32;
-      icon: "outline-home";
-      tooltip: "Home (Alt+Home)";
-    }
-
-    Button {
-      id: btnRefresh;
-      x: 152; y: 5;
-      width: 32; height: 32;
-      icon: "refresh";
-      tooltip: "Refresh (F5)";
-    }
-
-    Button {
-      id: btnNewFolder;
-      x: 188; y: 5;
-      width: 32; height: 32;
-      icon: "new-folder";
-      tooltip: "New Folder (Ctrl+Shift+N)";
-    }
-
-    PathBar {
-      id: pathBar;
-      anchors.left: btnNewFolder.right;
-      anchors.right: searchEntry.left;
-      anchors.leftMargin: 10;
-      anchors.rightMargin: 10;
-      y: 5;
-      height: 32;
-      mode: "breadcrumbs";
-      rootDisplayName: "Filesystem";
-    }
-
-    Entry {
-      id: searchEntry;
-      anchors.right: parent.right;
-      anchors.rightMargin: 8;
-      y: 5;
-      width: 180;
-      height: 32;
-      placeholder: "Filter...";
-    }
-  }
-
+  // ── Places Sidebar (Full height beneath menuBar, borderless like TFtFileDialog) ──
   Panel {
     id: sidebar;
-    anchors.top: toolBar.bottom;
+    anchors.top: menuBar.bottom;
     anchors.left: parent.left;
     anchors.bottom: statusBar.top;
-    width: 200;
+    width: 190;
     padding: 0;
-
-    Text {
-      id: placesHeading;
-      x: 12; y: 8;
-      width: 176; height: 20;
-      text: "PLACES";
-      font: "Sans Bold 9";
-      color: "#89b4fa";
-    }
+    style: "background-color: #f6f8fa; border: none; border-right: 1px solid #e2e8f0;";
 
     TreeView {
       id: placesTree;
-      x: 4; y: 32;
-      anchors.left: parent.left;
-      anchors.right: parent.right;
-      anchors.bottom: parent.bottom;
-      itemHeight: 26;
+      anchors.fill: parent;
+      paddingX: 12;
+      paddingY: 14;
+      itemHeight: 28;
       indentWidth: 16;
+      drawFrame: false;
+      style: "background-color: transparent; border: none;";
 
       TreeNode {
         text: "Home";
@@ -204,46 +119,147 @@ Container {
     }
   }
 
+  // ── Right Content Area ──
   Panel {
     id: contentArea;
-    anchors.top: toolBar.bottom;
+    anchors.top: menuBar.bottom;
     anchors.left: sidebar.right;
     anchors.right: parent.right;
     anchors.bottom: statusBar.top;
-    padding: 0;
+    padding: 8;
 
+    // ── Navigation Toolbar ──
+    Panel {
+      id: toolBar;
+      anchors.top: parent.top;
+      anchors.left: parent.left;
+      anchors.right: parent.right;
+      height: 34;
+      padding: 0;
+
+      Button {
+        id: btnBack;
+        x: 0; y: 2;
+        width: 30; height: 30;
+        icon: "nav-back";
+        tooltip: "Back (Alt+Left)";
+      }
+
+      Button {
+        id: btnForward;
+        x: 34; y: 2;
+        width: 30; height: 30;
+        icon: "nav-forward";
+        tooltip: "Forward (Alt+Right)";
+      }
+
+      Button {
+        id: btnUp;
+        x: 68; y: 2;
+        width: 30; height: 30;
+        icon: "nav-up";
+        tooltip: "Parent Directory (Alt+Up)";
+      }
+
+      Button {
+        id: btnHome;
+        x: 102; y: 2;
+        width: 30; height: 30;
+        icon: "outline-home";
+        tooltip: "Home (Alt+Home)";
+      }
+
+      PathBar {
+        id: pathBar;
+        anchors.left: btnHome.right;
+        anchors.leftMargin: 6;
+        anchors.right: btnNewFolder.left;
+        anchors.rightMargin: 6;
+        y: 2;
+        height: 30;
+        mode: "breadcrumbs";
+        rootDisplayName: "Filesystem";
+      }
+
+      Button {
+        id: btnNewFolder;
+        anchors.right: btnHidden.left;
+        anchors.rightMargin: 4;
+        y: 2;
+        width: 30; height: 30;
+        icon: "new-folder";
+        tooltip: "New Folder (Ctrl+Shift+N)";
+      }
+
+      Button {
+        id: btnHidden;
+        anchors.right: btnRefresh.left;
+        anchors.rightMargin: 4;
+        y: 2;
+        width: 30; height: 30;
+        icon: "hidden";
+        tooltip: "Show Hidden Files (Ctrl+H)";
+        isToggle: true;
+      }
+
+      Button {
+        id: btnRefresh;
+        anchors.right: searchEntry.left;
+        anchors.rightMargin: 6;
+        y: 2;
+        width: 30; height: 30;
+        icon: "refresh";
+        tooltip: "Refresh (F5)";
+      }
+
+      Entry {
+        id: searchEntry;
+        anchors.right: parent.right;
+        y: 2;
+        width: 150;
+        height: 30;
+        placeholder: "Filter...";
+      }
+    }
+
+    // ── File Table ──
     Table {
       id: fileTable;
-      anchors.fill: parent;
+      anchors.top: toolBar.bottom;
+      anchors.topMargin: 6;
+      anchors.left: parent.left;
+      anchors.right: parent.right;
+      anchors.bottom: parent.bottom;
       headerHeight: 28;
-      rowHeight: 24;
+      rowHeight: 26;
       showGridlines: false;
       zebraStriping: true;
       multiSelect: false;
 
       TableColumn {
         title: "Name";
-        width: 380;
+        width: 320;
         align: "left";
       }
       TableColumn {
         title: "Size";
-        width: 100;
+        width: 90;
         align: "right";
       }
       TableColumn {
-        title: "Type";
-        width: 150;
+        title: "Modified";
+        width: 140;
         align: "left";
       }
       TableColumn {
-        title: "Modified";
-        width: 160;
+        title: "Type";
+        width: 90;
         align: "left";
       }
     }
   }
 
+  // ── Status Bar ──
   Panel {
     id: statusBar;
     anchors.left: parent.left;
@@ -269,10 +285,10 @@ Container {
       anchors.right: parent.right;
       anchors.verticalCenter: parent.verticalCenter;
       anchors.rightMargin: 10;
-      width: 220;
       height: 20;
       text: "";
       font: "Sans 9";
+      color: "#6c7086";
     }
   }
 
@@ -291,28 +307,23 @@ Container {
     MenuItem {
       id: ctxCutItem;
       text: "Cut";
-      shortcut: "Ctrl+X";
     }
     MenuItem {
       id: ctxCopyItem;
       text: "Copy";
-      shortcut: "Ctrl+C";
     }
     MenuItem {
       id: ctxRenameItem;
       text: "Rename...";
-      shortcut: "F2";
     }
     MenuItem {
       id: ctxDeleteItem;
       text: "Move to Trash";
-      shortcut: "Delete";
     }
     Separator { }
     MenuItem {
       id: ctxPropertiesItem;
       text: "Properties";
-      shortcut: "Alt+Return";
     }
   }
 }
