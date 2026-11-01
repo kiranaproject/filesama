@@ -1,0 +1,310 @@
+// @form TFileSamaWindow
+//
+// filesama — desktop file manager window chrome modelled in FTML.
+// Declarative markup defines the menu bar, navigation toolbar, breadcrumbs path bar,
+// places sidebar tree, file details table, status bar, and context menu.
+//
+Container {
+  id: root;
+  width: 1040;
+  height: 680;
+
+  MenuBar {
+    id: menuBar;
+    anchors.top: parent.top;
+    anchors.left: parent.left;
+    anchors.right: parent.right;
+    height: 28;
+
+    Menu {
+      title: "File";
+      MenuItem { id: newFolderItem; text: "New Folder";      shortcut: "Ctrl+Shift+N"; }
+      Separator { }
+      MenuItem { id: propertiesItem; text: "Properties";     shortcut: "Alt+Return"; }
+      Separator { }
+      MenuItem { id: quitItem;       text: "Quit";           shortcut: "Ctrl+Q"; }
+    }
+
+    Menu {
+      title: "Edit";
+      MenuItem { id: cutItem;       text: "Cut";            shortcut: "Ctrl+X"; }
+      MenuItem { id: copyItem;      text: "Copy";           shortcut: "Ctrl+C"; }
+      MenuItem { id: renameItem;    text: "Rename...";      shortcut: "F2"; }
+      MenuItem { id: deleteItem;    text: "Move to Trash";  shortcut: "Delete"; }
+      Separator { }
+      MenuItem { id: selectAllItem; text: "Select All";     shortcut: "Ctrl+A"; }
+    }
+
+    Menu {
+      title: "View";
+      MenuItem { id: refreshItem;    text: "Refresh";        shortcut: "F5"; }
+      Separator { }
+      MenuItem { id: showHiddenItem; text: "Show Hidden Files"; checkable: true; shortcut: "Ctrl+H"; }
+    }
+
+    Menu {
+      title: "Go";
+      MenuItem { id: goHomeItem;      text: "Home";           shortcut: "Alt+Home"; }
+      MenuItem { id: goDesktopItem;   text: "Desktop"; }
+      MenuItem { id: goDocumentsItem; text: "Documents"; }
+      MenuItem { id: goDownloadsItem; text: "Downloads"; }
+      Separator { }
+      MenuItem { id: goParentItem;    text: "Parent Directory"; shortcut: "Alt+Up"; }
+      MenuItem { id: goRootItem;      text: "Root Filesystem"; }
+    }
+
+    Menu {
+      title: "Tools";
+      MenuItem { id: openTerminalItem; text: "Open Terminal Here"; shortcut: "Ctrl+Shift+T"; }
+    }
+
+    Menu {
+      title: "Help";
+      MenuItem { id: aboutItem; text: "About Samarinda Files"; }
+    }
+  }
+
+  Panel {
+    id: toolBar;
+    anchors.top: menuBar.bottom;
+    anchors.left: parent.left;
+    anchors.right: parent.right;
+    height: 42;
+    padding: 0;
+
+    Button {
+      id: btnBack;
+      x: 8; y: 5;
+      width: 32; height: 32;
+      text: "‹";
+      tooltip: "Back";
+    }
+
+    Button {
+      id: btnForward;
+      x: 44; y: 5;
+      width: 32; height: 32;
+      text: "›";
+      tooltip: "Forward";
+    }
+
+    Button {
+      id: btnUp;
+      x: 80; y: 5;
+      width: 32; height: 32;
+      text: "↑";
+      tooltip: "Parent Directory (Alt+Up)";
+    }
+
+    Button {
+      id: btnHome;
+      x: 116; y: 5;
+      width: 32; height: 32;
+      text: "⌂";
+      tooltip: "Home (Alt+Home)";
+    }
+
+    Button {
+      id: btnRefresh;
+      x: 152; y: 5;
+      width: 32; height: 32;
+      text: "↻";
+      tooltip: "Refresh (F5)";
+    }
+
+    PathBar {
+      id: pathBar;
+      anchors.left: btnRefresh.right;
+      anchors.right: searchEntry.left;
+      anchors.leftMargin: 10;
+      anchors.rightMargin: 10;
+      y: 5;
+      height: 32;
+      mode: "breadcrumbs";
+      rootDisplayName: "Filesystem";
+    }
+
+    Entry {
+      id: searchEntry;
+      anchors.right: parent.right;
+      anchors.rightMargin: 8;
+      y: 5;
+      width: 180;
+      height: 32;
+      placeholder: "Filter...";
+    }
+  }
+
+  Panel {
+    id: sidebar;
+    anchors.top: toolBar.bottom;
+    anchors.left: parent.left;
+    anchors.bottom: statusBar.top;
+    width: 200;
+    padding: 0;
+
+    Text {
+      id: placesHeading;
+      x: 12; y: 8;
+      width: 176; height: 20;
+      text: "PLACES";
+      font: "Sans Bold 9";
+      color: "#89b4fa";
+    }
+
+    TreeView {
+      id: placesTree;
+      x: 4; y: 32;
+      anchors.left: parent.left;
+      anchors.right: parent.right;
+      anchors.bottom: parent.bottom;
+      itemHeight: 26;
+      indentWidth: 16;
+
+      TreeNode {
+        text: "Home";
+        expanded: true;
+      }
+      TreeNode {
+        text: "Desktop";
+        expanded: true;
+      }
+      TreeNode {
+        text: "Documents";
+        expanded: true;
+      }
+      TreeNode {
+        text: "Downloads";
+        expanded: true;
+      }
+      TreeNode {
+        text: "Pictures";
+        expanded: true;
+      }
+      TreeNode {
+        text: "Music";
+        expanded: true;
+      }
+      TreeNode {
+        text: "Videos";
+        expanded: true;
+      }
+      TreeNode {
+        text: "Root";
+        expanded: true;
+      }
+    }
+  }
+
+  Panel {
+    id: contentArea;
+    anchors.top: toolBar.bottom;
+    anchors.left: sidebar.right;
+    anchors.right: parent.right;
+    anchors.bottom: statusBar.top;
+    padding: 0;
+
+    Table {
+      id: fileTable;
+      anchors.fill: parent;
+      headerHeight: 28;
+      rowHeight: 24;
+      showGridlines: false;
+      zebraStriping: true;
+      multiSelect: false;
+
+      TableColumn {
+        title: "Name";
+        width: 380;
+        align: "left";
+      }
+      TableColumn {
+        title: "Size";
+        width: 100;
+        align: "right";
+      }
+      TableColumn {
+        title: "Type";
+        width: 150;
+        align: "left";
+      }
+      TableColumn {
+        title: "Modified";
+        width: 160;
+        align: "left";
+      }
+    }
+  }
+
+  Panel {
+    id: statusBar;
+    anchors.left: parent.left;
+    anchors.right: parent.right;
+    anchors.bottom: parent.bottom;
+    height: 26;
+    padding: 0;
+
+    Text {
+      id: statusText;
+      anchors.left: parent.left;
+      anchors.right: statusRight.left;
+      anchors.verticalCenter: parent.verticalCenter;
+      anchors.leftMargin: 10;
+      anchors.rightMargin: 10;
+      height: 20;
+      text: "Loading...";
+      font: "Sans 9";
+    }
+
+    Text {
+      id: statusRight;
+      anchors.right: parent.right;
+      anchors.verticalCenter: parent.verticalCenter;
+      anchors.rightMargin: 10;
+      width: 220;
+      height: 20;
+      text: "";
+      font: "Sans 9";
+    }
+  }
+
+  PopupMenu {
+    id: fileContextMenu;
+
+    MenuItem {
+      id: ctxOpenItem;
+      text: "Open";
+    }
+    MenuItem {
+      id: ctxOpenTerminalItem;
+      text: "Open in Terminal";
+    }
+    Separator { }
+    MenuItem {
+      id: ctxCutItem;
+      text: "Cut";
+      shortcut: "Ctrl+X";
+    }
+    MenuItem {
+      id: ctxCopyItem;
+      text: "Copy";
+      shortcut: "Ctrl+C";
+    }
+    MenuItem {
+      id: ctxRenameItem;
+      text: "Rename...";
+      shortcut: "F2";
+    }
+    MenuItem {
+      id: ctxDeleteItem;
+      text: "Move to Trash";
+      shortcut: "Delete";
+    }
+    Separator { }
+    MenuItem {
+      id: ctxPropertiesItem;
+      text: "Properties";
+      shortcut: "Alt+Return";
+    }
+  }
+}
