@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Files
+Comment=Samarinda OS file manager
+Exec=filesama
+Icon=system-file-manager
+Terminal=false
+Type=Application
+Categories=System;FileManager;
+StartupWMClass=Filesama
+StartupNotify=true
